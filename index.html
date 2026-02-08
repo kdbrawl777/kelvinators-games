@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelvinators Games</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <nav>
+        <h1>Kelvinators Games</h1>
+        <p>Select a game to start playing!</p>
+    </nav>
+
+    <div class="main-container">
+        <div class="game-grid" id="gameGrid">
+            <button onclick="loadGame('https://marios-outpost.github.io/')">
+                <span>Mario Outpost</span>
+            </button>
+            <button onclick="loadGame('https://playtictactoe.org/')">
+                <span>Tic Tac Toe</span>
+            </button>
+            </div>
+
+        <div class="display-area">
+            <iframe id="gameFrame" src="" frameborder="0" allowfullscreen></iframe>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
