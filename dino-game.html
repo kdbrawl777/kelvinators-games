@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dino Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #f7f7f7; }
+        #gameCanvas { background: #fff; display: block; margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="200"></canvas>
+    <script>
+        var canvas = document.getElementById("gameCanvas");
+        var ctx = canvas.getContext("2d");
+        var dinoX = 50, dinoY = 150, dinoWidth = 20, dinoHeight = 20;
+
+        function drawDino() {
+            ctx.fillStyle = "green";
+            ctx.fillRect(dinoX, dinoY, dinoWidth, dinoHeight);
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawDino();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+        
+        document.addEventListener('keydown', function(event) {
+            if (event.code === 'Space') {
+                dinoY -= 60; 
+                setTimeout(() => { dinoY += 60; }, 500);
+            }
+        });
+    </script>
+</body>
+</html>
