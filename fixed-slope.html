@@ -1,12 +1,113 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Slope</title>
+<meta charset="UTF-8">
+<title>Slope Runner Clone</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #222;
+  }
+  canvas {
+    display: block;
+    margin: 0 auto;
+    background: #111;
+  }
+</style>
 </head>
-<body style="background:black;display:flex;justify-content:center;align-items:center;height:100vh;">
-  <a href="https://sites.google.com/view/slopegamez/" target="_blank"
-     style="color:white;font-size:24px;text-decoration:none;border:1px solid lime;padding:20px;">
-    Click to Play Slope
-  </a>
+<body>
+<canvas id="gameCanvas"></canvas>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let player = { x: 100, y: canvas.height - 150, width: 50, height: 50, dy: 0, gravity: 1.2, jumpPower: -20 };
+let obstacles = [];
+let frame = 0;
+let speed = 8;
+let score = 0;
+
+// Handle resizing
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  player.y = canvas.height - 150;
+});
+
+// Jump controls
+document.addEventListener('keydown', e => {
+  if(e.code === 'Space' && player.y + player.height >= canvas.height) {
+    player.dy = player.jumpPower;
+  }
+});
+
+function drawPlayer() {
+  ctx.fillStyle = '#0f0';
+  ctx.fillRect(player.x, player.y, player.width, player.height);
+}
+
+function drawObstacles() {
+  ctx.fillStyle = '#f00';
+  obstacles.forEach(obs => {
+    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+  });
+}
+
+function spawnObstacle() {
+  let height = 50 + Math.random() * 100;
+  obstacles.push({ x: canvas.width, y: canvas.height - height, width: 30, height });
+}
+
+function update() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Player physics
+  player.dy += player.gravity;
+  player.y += player.dy;
+  if(player.y + player.height > canvas.height) {
+    player.y = canvas.height - player.height;
+    player.dy = 0;
+  }
+
+  // Obstacles
+  obstacles.forEach(obs => obs.x -= speed);
+
+  // Remove offscreen obstacles
+  obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
+
+  // Spawn new obstacles
+  if(frame % 90 === 0) spawnObstacle();
+
+  // Collision detection
+  for(let obs of obstacles) {
+    if(player.x < obs.x + obs.width && player.x + player.width > obs.x &&
+       player.y < obs.y + obs.height && player.y + player.height > obs.y) {
+      alert("Game Over! Score: " + Math.floor(score));
+      obstacles = [];
+      score = 0;
+      frame = 0;
+      player.y = canvas.height - player.height;
+    }
+  }
+
+  drawPlayer();
+  drawObstacles();
+
+  score += 0.1;
+  ctx.fillStyle = '#fff';
+  ctx.font = '30px Arial';
+  ctx.fillText('Score: ' + Math.floor(score), 30, 50);
+
+  frame++;
+  requestAnimationFrame(update);
+}
+
+update();
+</script>
 </body>
 </html>
