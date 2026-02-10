@@ -1,24 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shinigami Strikers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>⚔️ Shinigami Strikers ⚔️</h1>
+<p>W/S (Top) • ↑/↓ (Bottom)</p>
+
+<canvas id="game" width="900" height="300"></canvas>
+<p id="ui"></p>
+<button onclick="restart()">Restart</button>
+
 <script>
 /* ======================
-   CANVAS SETUP
+   CANVAS
    ====================== */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-let animationId;
-let spawnTimer;
-
 /* ======================
    GAME STATE
    ====================== */
-let speed;
-let gravity = 1;
+let animationId, spawnTimer;
+let speed, gravity = 1;
 let score1, score2;
 let enemies = [];
-let chakraOffset = 0;
+let chakra = 0;
 
 /* ======================
-   PLAYER FACTORY
+   PLAYER
    ====================== */
 function makePlayer(yBase) {
   return {
@@ -36,49 +50,51 @@ function makePlayer(yBase) {
 let p1, p2;
 
 /* ======================
-   PLAYER DRAW
+   DRAW PLAYER
    ====================== */
-function drawRunner(p, color) {
+function drawPlayer(p, color) {
   ctx.fillStyle = color;
   ctx.fillRect(p.x, p.y, p.w, p.h);
+
+  // headband
+  ctx.fillStyle = "#222";
+  ctx.fillRect(p.x, p.y + 6, p.w, 5);
 }
 
 /* ======================
-   NARUTO BACKGROUND
+   NARUTO-STYLE BACKGROUND
    ====================== */
-function drawNarutoBackground() {
-  // Sky gradient
-  const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  g.addColorStop(0, "#ffae42");
-  g.addColorStop(1, "#ff6f00");
+function drawBackground() {
+  // sunset sky
+  const g = ctx.createLinearGradient(0,0,0,canvas.height);
+  g.addColorStop(0, "#ffb347");
+  g.addColorStop(1, "#ff5f1f");
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  // Chakra streaks
-  chakraOffset -= speed * 0.5;
+  // chakra streaks
+  chakra -= speed * 0.6;
+  ctx.fillStyle = "rgba(0,255,255,0.15)";
   for (let i = 0; i < 10; i++) {
-    ctx.fillStyle = "rgba(0,255,255,0.15)";
-    ctx.fillRect((i * 200 + chakraOffset) % canvas.width, 0, 80, canvas.height);
+    ctx.fillRect((i*180 + chakra) % canvas.width, 0, 60, canvas.height);
   }
 
-  // Hidden Leaf swirl symbols
+  // swirl symbols
   ctx.strokeStyle = "rgba(0,0,0,0.2)";
-  for (let x = 100; x < canvas.width; x += 250) {
-    for (let y = 60; y < canvas.height; y += 120) {
+  for (let x = 120; x < canvas.width; x += 260) {
+    for (let y = 70; y < canvas.height; y += 140) {
       ctx.beginPath();
       ctx.arc(x, y, 18, 0, Math.PI * 1.5);
       ctx.stroke();
     }
   }
 
-  // Chakra divider
+  // chakra divider
   ctx.strokeStyle = "#00ffff";
-  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(0, 150);
-  ctx.lineTo(canvas.width, 150);
+  ctx.moveTo(0,150);
+  ctx.lineTo(canvas.width,150);
   ctx.stroke();
-  ctx.lineWidth = 1;
 }
 
 /* ======================
@@ -87,17 +103,15 @@ function drawNarutoBackground() {
 function spawnEnemy() {
   const lane = Math.random() < 0.5 ? 0 : 1;
 
-  // Prevent impossible stacking
+  // spacing protection
   if (enemies.some(e => e.lane === lane && e.x > canvas.width - 300)) return;
-
-  const flying = Math.random() < 0.5;
 
   enemies.push({
     x: canvas.width,
     lane,
-    flying,
+    flying: Math.random() < 0.5,
     w: 24,
-    h: flying ? 18 : 28
+    h: 24
   });
 }
 
@@ -131,8 +145,7 @@ function duck(p, on) {
    ====================== */
 function update() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  drawNarutoBackground();
+  drawBackground();
 
   [p1, p2].forEach(p => {
     if (!p.alive) return;
@@ -144,19 +157,18 @@ function update() {
     }
   });
 
-  drawRunner(p1, "#0033ff");
-  drawRunner(p2, "#00aa00");
+  drawPlayer(p1, "#003cff");
+  drawPlayer(p2, "#00aa44");
 
-  enemies.forEach((e, i) => {
+  enemies.forEach((e,i) => {
     e.x -= speed;
-
     const laneY = e.lane === 0 ? 114 : 264;
     const y = e.flying ? laneY - 40 : laneY;
 
-    // Shuriken look
+    // shuriken
     ctx.fillStyle = "#111";
     ctx.beginPath();
-    ctx.arc(e.x, y + 10, 10, 0, Math.PI * 2);
+    ctx.arc(e.x, y+12, 10, 0, Math.PI*2);
     ctx.fill();
 
     [[p1,0],[p2,1]].forEach(([p,l]) => {
@@ -175,7 +187,7 @@ function update() {
   if (p1.alive) score1++;
   if (p2.alive) score2++;
 
-  speed += 0.002;
+  speed += 0.0025;
 
   document.getElementById("ui").textContent =
     `P1: ${score1} ${p1.alive ? "" : "💀"} | P2: ${score2} ${p2.alive ? "" : "💀"}`;
@@ -184,7 +196,7 @@ function update() {
 }
 
 /* ======================
-   RESTART
+   START
    ====================== */
 function restart() {
   cancelAnimationFrame(animationId);
@@ -203,3 +215,6 @@ function restart() {
 
 restart();
 </script>
+
+</body>
+</html>
