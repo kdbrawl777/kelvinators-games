@@ -1,132 +1,102 @@
-// Sample of the Dino Game code for better functionality
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dino Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-// Variables for the game
-let score = 0;
-let isDuck = false;
-let isJumping = false;
-let gravity = 1;
-let jumpSpeed = 20;
+  <h1>Dino Game</h1>
 
-// Dino object
-const dino = document.createElement('div');
-dino.className = 'dino';
-document.body.appendChild(dino);
+  <div id="game">
+    <div id="score">0</div>
+    <div class="dino"></div>
+  </div>
 
-// Ground object
-const ground = document.createElement('div');
-ground.className = 'ground';
-document.body.appendChild(ground);
+  <p>Space = Jump | ↓ = Duck</p>
 
-// Function to start the jumping effect
-function jump() {
-  if (!isJumping) {
-    isJumping = true;
-    let jumpHeight = jumpSpeed;
+  <script>
+    let score = 0;
+    let isJumping = false;
+    let isDuck = false;
 
-    // Jumping animation
-    const jumpInterval = setInterval(() => {
-      if (jumpHeight > 0) {
-        dino.style.bottom = `${parseInt(dino.style.bottom || 0) + 5}px`;
-        jumpHeight--;
-      } else {
-        clearInterval(jumpInterval);
-        fall();
-      }
-    }, 20);
-  }
-}
+    const dino = document.querySelector(".dino");
+    const scoreDisplay = document.getElementById("score");
+    const game = document.getElementById("game");
 
-// Falling effect when the dino finishes jumping
-function fall() {
-  const fallInterval = setInterval(() => {
-    if (parseInt(dino.style.bottom || 0) > 0) {
-      dino.style.bottom = `${parseInt(dino.style.bottom || 0) - gravity}px`;
-    } else {
-      clearInterval(fallInterval);
-      isJumping = false;
-    }
-  }, 20);
-}
+    function jump() {
+      if (isJumping) return;
+      isJumping = true;
 
-// Dino ducking effect
-function duck() {
-  if (!isDuck) {
-    isDuck = true;
-    dino.classList.add('duck');
-    setTimeout(() => {
-      isDuck = false;
-      dino.classList.remove('duck');
-    }, 800); // Duck for 800ms
-  }
-}
-
-// Score Tracking
-function updateScore() {
-  score++;
-  document.querySelector('#score').innerText = score;
-}
-
-// Obstacle generation and handling
-function createObstacle() {
-  const obstacle = document.createElement('div');
-  obstacle.className = 'obstacle';
-  document.body.appendChild(obstacle);
-  let position = window.innerWidth;
-
-  const obstacleInterval = setInterval(() => {
-    position -= 5;
-    obstacle.style.left = `${position}px`;
-
-    // Check for collision with the dino
-    if (position <= parseInt(dino.style.left || 0) + 50 &&
-        parseInt(dino.style.bottom || 0) <= 50) {
-      clearInterval(obstacleInterval);
-      gameOver();
+      let position = 0;
+      const up = setInterval(() => {
+        if (position >= 100) {
+          clearInterval(up);
+          const down = setInterval(() => {
+            if (position <= 0) {
+              clearInterval(down);
+              isJumping = false;
+            }
+            position -= 5;
+            dino.style.bottom = position + "px";
+          }, 20);
+        }
+        position += 5;
+        dino.style.bottom = position + "px";
+      }, 20);
     }
 
-    // Remove obstacle when it's off-screen
-    if (position < 0) {
-      clearInterval(obstacleInterval);
-      obstacle.remove();
+    function duck() {
+      if (isDuck) return;
+      isDuck = true;
+      dino.classList.add("duck");
+      setTimeout(() => {
+        dino.classList.remove("duck");
+        isDuck = false;
+      }, 500);
     }
-  }, 20);
-}
 
-// Game over function
-function gameOver() {
-  alert("Game Over!");
-  // Reset the game or reload page
-  score = 0;
-  document.querySelector('#score').innerText = score;
-}
+    function createObstacle() {
+      const obstacle = document.createElement("div");
+      obstacle.classList.add("obstacle");
+      game.appendChild(obstacle);
 
-// Game loop and speed increase
-function gameLoop() {
-  if (score % 100 === 0) { // Increase speed or difficulty every 100 points
-    createObstacle();
-    setTimeout(() => {
-      gameLoop();
-    }, 1000 - score / 10); // Faster obstacles as score increases
-  } else {
-    createObstacle();
-    setTimeout(gameLoop, 2000); // Regular interval
-  }
-}
+      let pos = game.offsetWidth;
+      obstacle.style.left = pos + "px";
 
-// Event Listeners for user controls
-document.addEventListener('keydown', (event) => {
-  if (event.code === 'Space') {
-    jump();
-  } else if (event.code === 'ArrowDown') {
-    duck();
-  }
-});
+      const move = setInterval(() => {
+        pos -= 5;
+        obstacle.style.left = pos + "px";
 
-// Displaying the score on the screen
-const scoreDisplay = document.createElement('div');
-scoreDisplay.id = 'score';
-scoreDisplay.innerText = score;
-document.body.appendChild(scoreDisplay);
+        const dinoRect = dino.getBoundingClientRect();
+        const obsRect = obstacle.getBoundingClientRect();
 
-// Start the game
-gameLoop();
+        if (
+          obsRect.left < dinoRect.right &&
+          obsRect.right > dinoRect.left &&
+          obsRect.bottom > dinoRect.top
+        ) {
+          alert("Game Over! Score: " + score);
+          location.reload();
+        }
+
+        if (pos < -20) {
+          obstacle.remove();
+          clearInterval(move);
+          score++;
+          scoreDisplay.textContent = score;
+        }
+      }, 20);
+    }
+
+    setInterval(createObstacle, 2000);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space") jump();
+      if (e.code === "ArrowDown") duck();
+    });
+  </script>
+
+</body>
+</html>
