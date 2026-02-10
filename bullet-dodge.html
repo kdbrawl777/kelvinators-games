@@ -2,187 +2,87 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Kirk – Dodge the Bullets</title>
+<title>Dodge the Bullets</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   body {
     margin: 0;
-    background: #0b0b0b;
-    color: #00ffcc;
-    font-family: Arial, Helvetica, sans-serif;
+    background: black;
+    color: #00ff00;
+    font-family: Arial, sans-serif;
     text-align: center;
   }
-
-  h1 {
-    margin: 15px 0 5px;
-    text-shadow: 0 0 10px #00ffcc;
-  }
-
   canvas {
     background: #111;
-    border: 3px solid #00ffcc;
+    border: 3px solid #00ff00;
     display: block;
-    margin: 0 auto;
-  }
-
-  #ui {
-    margin-top: 10px;
-    font-size: 18px;
-  }
-
-  button {
-    margin: 10px;
-    padding: 10px 20px;
-    background: #111;
-    color: #00ffcc;
-    border: 1px solid #00ffcc;
-    cursor: pointer;
-    font-size: 16px;
-  }
-
-  button:hover {
-    background: #222;
+    margin: 20px auto;
   }
 </style>
 </head>
 <body>
 
-<h1>Kirk – Dodge the Bullets</h1>
-<p>Use Arrow Keys to move</p>
+<h1>Dodge the Bullets</h1>
+<p>Use Arrow Keys</p>
 
-<canvas id="game" width="800" height="500"></canvas>
-
-<div id="ui"></div>
-<button onclick="restart()">Restart</button>
+<canvas id="game" width="600" height="400"></canvas>
 
 <script>
-/* ===== CANVAS ===== */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-/* ===== STATE ===== */
+let player = { x: 300, y: 200, r: 10 };
 let bullets = [];
 let keys = {};
-let score = 0;
 let frame = 0;
-let gameOver = false;
 
-/* ===== PLAYER ===== */
-const player = {
-  x: 400,
-  y: 250,
-  r: 12,
-  dx: 0,
-  dy: 0,
-  speed: 0.7,
-  max: 6,
-  hp: 3
-};
-
-/* ===== INPUT ===== */
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup", e => keys[e.key] = false);
 
-/* ===== BULLETS ===== */
 function spawnBullet() {
-  const side = Math.floor(Math.random() * 4);
-  let x, y, dx, dy;
-  const s = 3 + score / 500;
-
-  if (side === 0) { x = Math.random()*800; y = -20; dx = 0; dy = s; }
-  if (side === 1) { x = Math.random()*800; y = 520; dx = 0; dy = -s; }
-  if (side === 2) { x = -20; y = Math.random()*500; dx = s; dy = 0; }
-  if (side === 3) { x = 820; y = Math.random()*500; dx = -s; dy = 0; }
-
-  bullets.push({ x, y, dx, dy, r: 6 });
+  bullets.push({
+    x: Math.random() < 0.5 ? 0 : 600,
+    y: Math.random() * 400,
+    dx: Math.random() < 0.5 ? 3 : -3,
+    dy: (Math.random() - 0.5) * 2,
+    r: 5
+  });
 }
 
-/* ===== COLLISION ===== */
-function hit(a, b) {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  return Math.sqrt(dx*dx + dy*dy) < a.r + b.r;
-}
-
-/* ===== LOOP ===== */
 function update() {
-  ctx.clearRect(0,0,800,500);
+  ctx.clearRect(0,0,600,400);
 
-  if (!gameOver) score++;
+  if (keys["ArrowUp"]) player.y -= 4;
+  if (keys["ArrowDown"]) player.y += 4;
+  if (keys["ArrowLeft"]) player.x -= 4;
+  if (keys["ArrowRight"]) player.x += 4;
 
-  if (keys["ArrowUp"]) player.dy -= player.speed;
-  if (keys["ArrowDown"]) player.dy += player.speed;
-  if (keys["ArrowLeft"]) player.dx -= player.speed;
-  if (keys["ArrowRight"]) player.dx += player.speed;
+  player.x = Math.max(10, Math.min(590, player.x));
+  player.y = Math.max(10, Math.min(390, player.y));
 
-  player.dx *= 0.9;
-  player.dy *= 0.9;
-
-  player.dx = Math.max(-player.max, Math.min(player.max, player.dx));
-  player.dy = Math.max(-player.max, Math.min(player.max, player.dy));
-
-  player.x += player.dx;
-  player.y += player.dy;
-
-  player.x = Math.max(player.r, Math.min(800 - player.r, player.x));
-  player.y = Math.max(player.r, Math.min(500 - player.r, player.y));
-
-  ctx.fillStyle = "#00ffcc";
+  ctx.fillStyle = "#00ff00";
   ctx.beginPath();
-  ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
+  ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
   ctx.fill();
 
-  bullets.forEach((b, i) => {
+  bullets.forEach(b => {
     b.x += b.dx;
     b.y += b.dy;
 
     ctx.fillStyle = "red";
     ctx.beginPath();
-    ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
     ctx.fill();
-
-    if (hit(player, b)) {
-      bullets.splice(i,1);
-      player.hp--;
-      if (player.hp <= 0) gameOver = true;
-    }
   });
 
-  bullets = bullets.filter(b =>
-    b.x > -40 && b.x < 840 && b.y > -40 && b.y < 540
-  );
+  bullets = bullets.filter(b => b.x > -20 && b.x < 620);
 
-  if (frame % 40 === 0 && !gameOver) spawnBullet();
-
-  document.getElementById("ui").textContent =
-    `Score: ${score} | HP: ${player.hp}`;
-
-  if (gameOver) {
-    ctx.fillStyle = "rgba(0,0,0,0.6)";
-    ctx.fillRect(0,0,800,500);
-    ctx.fillStyle = "#fff";
-    ctx.font = "36px Arial";
-    ctx.fillText("GAME OVER", 280, 260);
-  }
+  if (frame % 30 === 0) spawnBullet();
 
   frame++;
   requestAnimationFrame(update);
 }
 
-/* ===== RESTART ===== */
-function restart() {
-  bullets = [];
-  score = 0;
-  frame = 0;
-  gameOver = false;
-  player.hp = 3;
-  player.x = 400;
-  player.y = 250;
-  player.dx = 0;
-  player.dy = 0;
-}
-
-/* ===== START ===== */
 update();
 </script>
 
