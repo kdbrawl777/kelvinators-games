@@ -1,14 +1,188 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Dino Test</title>
+  <meta charset="UTF-8">
+  <title>2P Dino Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
 </head>
-<body style="background:black;color:#00ff00;text-align:center;">
+<body>
 
-<h1>IF YOU SEE THIS, HTML WORKS</h1>
+<h1>2 Player Dino Game</h1>
+<p>W/S (Top) • ↑/↓ (Bottom)</p>
+
+<canvas id="game" width="900" height="300"></canvas>
+<p id="ui"></p>
+<button onclick="restart()">Restart</button>
 
 <script>
-  alert("IF YOU SEE THIS, JAVASCRIPT WORKS");
+/* ======================
+   CANVAS SETUP
+   ====================== */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let animationId;
+let spawnTimer;
+
+/* ======================
+   GAME STATE
+   ====================== */
+let speed;
+let gravity = 1;
+let score1, score2;
+let gameOver1, gameOver2;
+let enemies = [];
+
+/* ======================
+   PLAYER FACTORY
+   ====================== */
+function makePlayer(yBase) {
+  return {
+    x: 60,
+    y: yBase,
+    baseY: yBase,
+    w: 26,
+    h: 36,
+    vy: 0,
+    duck: false,
+    alive: true
+  };
+}
+
+let p1, p2;
+
+/* ======================
+   PIXEL DINO
+   ====================== */
+function drawDino(p, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(p.x, p.y, 26, 36);      // body
+  ctx.fillRect(p.x + 20, p.y + 6, 10, 10); // head
+  ctx.fillRect(p.x + 6, p.y + 36, 6, 6);   // leg
+  ctx.fillRect(p.x + 16, p.y + 36, 6, 6);
+}
+
+/* ======================
+   ENEMIES
+   ====================== */
+function spawnEnemy() {
+  enemies.push({
+    x: canvas.width,
+    lane: Math.random() < 0.5 ? 0 : 1,
+    flying: Math.random() < 0.3,
+    w: 20,
+    h: 30
+  });
+}
+
+/* ======================
+   INPUT
+   ====================== */
+document.addEventListener("keydown", e => {
+  if (e.key === "w") jump(p1);
+  if (e.key === "s") duck(p1, true);
+
+  if (e.key === "ArrowUp") jump(p2);
+  if (e.key === "ArrowDown") duck(p2, true);
+});
+
+document.addEventListener("keyup", e => {
+  if (e.key === "s") duck(p1, false);
+  if (e.key === "ArrowDown") duck(p2, false);
+});
+
+function jump(p) {
+  if (p.alive && p.y === p.baseY) p.vy = -15;
+}
+
+function duck(p, on) {
+  p.duck = on;
+  p.h = on ? 20 : 36;
+  p.y = on ? p.baseY + 16 : p.baseY;
+}
+
+/* ======================
+   LOOP
+   ====================== */
+function update() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // divider
+  ctx.strokeStyle = "#00ff00";
+  ctx.beginPath();
+  ctx.moveTo(0,150);
+  ctx.lineTo(canvas.width,150);
+  ctx.stroke();
+
+  [p1, p2].forEach(p => {
+    if (!p.alive) return;
+
+    p.vy += gravity;
+    p.y += p.vy;
+    if (p.y > p.baseY) {
+      p.y = p.baseY;
+      p.vy = 0;
+    }
+  });
+
+  drawDino(p1, "#00ff00");
+  drawDino(p2, "#00ffaa");
+
+  enemies.forEach((e, i) => {
+    e.x -= speed;
+    const laneY = e.lane === 0 ? 114 : 264;
+    const y = e.flying ? laneY - 40 : laneY;
+
+    ctx.fillStyle = e.flying ? "yellow" : "red";
+    ctx.fillRect(e.x, y, e.w, e.h);
+
+    [[p1,0],[p2,1]].forEach(([p,l]) => {
+      if (!p.alive || e.lane !== l) return;
+      if (
+        p.x < e.x + e.w &&
+        p.x + p.w > e.x &&
+        p.y < y + e.h &&
+        p.y + p.h > y
+      ) p.alive = false;
+    });
+
+    if (e.x < -30) enemies.splice(i,1);
+  });
+
+  if (p1.alive) score1++;
+  if (p2.alive) score2++;
+
+  speed += 0.002;
+
+  document.getElementById("ui").textContent =
+    `P1: ${score1} ${p1.alive ? "" : "💀"} | P2: ${score2} ${p2.alive ? "" : "💀"}`;
+
+  animationId = requestAnimationFrame(update);
+}
+
+/* ======================
+   RESTART (NO BUGS)
+   ====================== */
+function restart() {
+  cancelAnimationFrame(animationId);
+  clearInterval(spawnTimer);
+
+  speed = 5;
+  score1 = score2 = 0;
+  enemies = [];
+
+  p1 = makePlayer(114);
+  p2 = makePlayer(264);
+
+  spawnTimer = setInterval(spawnEnemy, 1200);
+  update();
+}
+
+/* ======================
+   START
+   ====================== */
+restart();
 </script>
 
 </body>
