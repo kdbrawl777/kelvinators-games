@@ -1,20 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Shinigami Strikers</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-<h1>Shinigami Strikers</h1>
-<p>W/S (Top) • ↑/↓ (Bottom)</p>
-
-<canvas id="game" width="900" height="300" style="border:1px solid #444"></canvas>
-<p id="ui"></p>
-<button onclick="restart()">Restart</button>
-
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -24,15 +7,20 @@ let gravity = 1;
 let animationId;
 let enemies = [];
 let score1 = 0, score2 = 0;
+let runFrame = 0;
 
+/* ======================
+   PLAYER
+   ====================== */
 function makePlayer(y) {
   return {
-    x: 60,
+    x: 70,
     y,
     baseY: y,
-    w: 26,
-    h: 36,
+    w: 22,
+    h: 34,
     vy: 0,
+    duck: false,
     alive: true
   };
 }
@@ -40,23 +28,39 @@ function makePlayer(y) {
 let p1 = makePlayer(114);
 let p2 = makePlayer(264);
 
-function spawnEnemy() {
-  enemies.push({
-    x: canvas.width,
-    lane: Math.random() < 0.5 ? 0 : 1,
-    flying: Math.random() < 0.4,
-    w: 20,
-    h: 30
-  });
-}
-
+/* ======================
+   INPUT
+   ====================== */
 document.addEventListener("keydown", e => {
-  if (e.key === "w" && p1.y === p1.baseY) p1.vy = -15;
-  if (e.key === "ArrowUp" && p2.y === p2.baseY) p2.vy = -15;
+  if (e.key === "w") jump(p1);
+  if (e.key === "s") duck(p1, true);
+  if (e.key === "ArrowUp") jump(p2);
+  if (e.key === "ArrowDown") duck(p2, true);
 });
 
+document.addEventListener("keyup", e => {
+  if (e.key === "s") duck(p1, false);
+  if (e.key === "ArrowDown") duck(p2, false);
+});
+
+function jump(p) {
+  if (p.alive && p.y === p.baseY) p.vy = -15;
+}
+
+function duck(p, on) {
+  p.duck = on;
+  p.h = on ? 22 : 34;
+  p.y = on ? p.baseY + 12 : p.baseY;
+}
+
+/* ======================
+   BACKGROUND
+   ====================== */
 function drawBackground() {
-  ctx.fillStyle = "#ff914d";
+  const g = ctx.createLinearGradient(0,0,0,canvas.height);
+  g.addColorStop(0, "#ffb347");
+  g.addColorStop(1, "#ff5f1f");
+  ctx.fillStyle = g;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
   ctx.strokeStyle = "#00ffff";
@@ -66,59 +70,144 @@ function drawBackground() {
   ctx.stroke();
 }
 
+/* ======================
+   NARUTO RUN DRAW
+   ====================== */
+function drawNarutoRun(p, color) {
+  runFrame++;
+
+  ctx.save();
+  ctx.translate(p.x + 10, p.y + 15);
+  ctx.rotate(-0.2); // lean forward
+
+  // body
+  ctx.fillStyle = color;
+  ctx.fillRect(-6, -10, 12, 20);
+
+  // head
+  ctx.fillRect(-5, -18, 10, 8);
+
+  // arms (swept back)
+  ctx.fillRect(-16, -8, 10, 4);
+  ctx.fillRect(6, -8, 10, 4);
+
+  // legs (running)
+  ctx.fillRect(-4, 10 + Math.sin(runFrame*0.3)*4, 4, 10);
+  ctx.fillRect(0, 10 + Math.cos(runFrame*0.3)*4, 4, 10);
+
+  ctx.restore();
+}
+
+/* ======================
+   ENEMIES
+   ====================== */
+function spawnEnemy() {
+  const lane = Math.random() < 0.5 ? 0 : 1;
+
+  if (enemies.some(e => e.lane === lane && e.x > canvas.width - 280)) return;
+
+  enemies.push({
+    x: canvas.width,
+    lane,
+    type: Math.random() < 0.5 ? "shuriken" : "kunai",
+    rot: 0
+  });
+}
+
+/* ======================
+   DRAW SHURIKEN
+   ====================== */
+function drawShuriken(e, y) {
+  ctx.save();
+  ctx.translate(e.x, y);
+  ctx.rotate(e.rot);
+
+  ctx.fillStyle = "#222";
+  for (let i = 0; i < 4; i++) {
+    ctx.rotate(Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(18,4);
+    ctx.lineTo(18,-4);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+/* ======================
+   DRAW KUNAI
+   ====================== */
+function drawKunai(e, y) {
+  ctx.fillStyle = "#333";
+  ctx.beginPath();
+  ctx.moveTo(e.x, y);
+  ctx.lineTo(e.x + 26, y + 6);
+  ctx.lineTo(e.x, y + 12);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillRect(e.x - 6, y + 4, 6, 4);
+}
+
+/* ======================
+   GAME LOOP
+   ====================== */
 function update() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawBackground();
 
-  [p1,p2].forEach(p => {
+  [p1,p2].forEach((p,i)=>{
+    if(!p.alive) return;
+
     p.vy += gravity;
     p.y += p.vy;
-    if (p.y > p.baseY) {
+    if(p.y > p.baseY){
       p.y = p.baseY;
       p.vy = 0;
     }
-    ctx.fillStyle = "#111";
-    ctx.fillRect(p.x,p.y,p.w,p.h);
+
+    drawNarutoRun(p, i === 0 ? "#003cff" : "#00aa44");
   });
 
-  enemies.forEach((e,i) => {
+  enemies.forEach((e,i)=>{
     e.x -= speed;
-    const laneY = e.lane === 0 ? 114 : 264;
-    const y = e.flying ? laneY - 40 : laneY;
+    e.rot += 0.2;
 
-    ctx.fillStyle = e.flying ? "yellow" : "red";
-    ctx.fillRect(e.x,y,e.w,e.h);
+    const laneY = e.lane === 0 ? 114 : 264;
+    const y = e.type === "shuriken" ? laneY - 36 : laneY;
+
+    if(e.type === "shuriken") drawShuriken(e, y);
+    else drawKunai(e, y);
 
     [[p1,0],[p2,1]].forEach(([p,l])=>{
-      if(e.lane!==l) return;
+      if(!p.alive || e.lane !== l) return;
       if (
-        p.x < e.x + e.w &&
+        p.x < e.x + 26 &&
         p.x + p.w > e.x &&
-        p.y < y + e.h &&
+        p.y < y + 20 &&
         p.y + p.h > y
       ) p.alive = false;
     });
 
-    if(e.x < -30) enemies.splice(i,1);
+    if(e.x < -40) enemies.splice(i,1);
   });
 
-  score1++; score2++;
+  if(p1.alive) score1++;
+  if(p2.alive) score2++;
+
+  speed += 0.002;
+
   document.getElementById("ui").textContent =
-    `P1: ${score1} | P2: ${score2}`;
+    `P1: ${score1} ${p1.alive?"":"💀"} | P2: ${score2} ${p2.alive?"":"💀"}`;
 
   animationId = requestAnimationFrame(update);
 }
 
-setInterval(spawnEnemy,1200);
+/* ======================
+   START
+   ====================== */
+setInterval(spawnEnemy, 1100);
 update();
-
-function restart() {
-  enemies = [];
-  score1 = score2 = 0;
-  p1 = makePlayer(114);
-  p2 = makePlayer(264);
-}
 </script>
-
-</body>
-</html>
