@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Big K Bullet Dodger V6</title>
+<title>Big K Bullet Dodger Ultimate</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   body {
@@ -18,13 +18,26 @@
     border: 3px solid #00ff00;
     background: #111;
   }
+  button {
+    background: #111;
+    color: #00ff00;
+    border: 2px solid #00ff00;
+    font-size: 16px;
+    padding: 10px 20px;
+    cursor: pointer;
+    margin: 10px;
+  }
+  button:hover {
+    background: #222;
+  }
 </style>
 </head>
 <body>
 
 <h1>Big K Bullet Dodger</h1>
-<p>Arrow Keys • Dodge Bullets • Eat Pancakes</p>
+<p>Arrow Keys • Dodge Bullets • Collect Pancakes & Syrup</p>
 <canvas id="game" width="600" height="400"></canvas>
+<button onclick="restartGame()">Restart</button>
 
 <script>
 const canvas = document.getElementById("game");
@@ -39,11 +52,12 @@ document.addEventListener("keyup", e=>keys[e.key]=false);
 let player = {
   x:300,
   y:300,
-  w:50,
-  h:100,
+  w:60,
+  h:120,
   speed:5,
   hp:3,
   alive:true,
+  shield:0,
   wobble:0
 };
 
@@ -55,11 +69,10 @@ let difficulty = 1;
 let slowTime = 0;
 let speechShown = false;
 let speechAlpha = 0;
-let speechY = -20;
 
-/* ===== BULLETS ===== */
+/* ===== SPAWN BULLETS ===== */
 function spawnBullet(){
-  const side=Math.floor(Math.random()*4);
+  const side = Math.floor(Math.random()*4);
   let x,y,dx,dy;
   let speed = 5 + difficulty*0.8;
   if(slowTime>0) speed*=0.4;
@@ -67,51 +80,58 @@ function spawnBullet(){
   if(side===1){x=Math.random()*600;y=420;dx=0;dy=-speed;}
   if(side===2){x=-20;y=Math.random()*400;dx=speed;dy=0;}
   if(side===3){x=620;y=Math.random()*400;dx=-speed;dy=0;}
-  bullets.push({x,y,dx,dy,w:20,h:10});
+  bullets.push({x,y,dx,dy,w:20,h:12});
 }
 
-/* ===== POWERUPS ===== */
+/* ===== SPAWN POWERUPS ===== */
 function spawnPowerup(){
   const type = Math.random()<0.5?"pancake":"syrup";
-  powerups.push({x:Math.random()*540+30,y:Math.random()*320+30,r:12,type,wobble:0});
+  powerups.push({x:Math.random()*540+30,y:Math.random()*320+30,type,wobble:0});
 }
 
-/* ===== DRAW PLAYER (FUNNY, WEIRD STICK FIGURE) ===== */
-function drawPlayer(){
-  // wobble body
-  player.wobble = Math.sin(frame/5)*5;
+/* ===== COLLISION ===== */
+function collide(a,b){
+  return a.x < b.x + b.w && a.x + a.w > b.x &&
+         a.y < b.y + b.h && a.y + a.h > b.y;
+}
 
+/* ===== DRAW PLAYER ===== */
+function drawPlayer(){
+  player.wobble = Math.sin(frame/5)*5;
   // torso
   ctx.fillStyle="#000";
   ctx.fillRect(player.x,player.y+player.wobble,player.w,player.h);
-
-  // head (weird oversized)
+  // head (oversized for fun)
   ctx.beginPath();
-  ctx.arc(player.x+player.w/2,player.y-20,player.w/2,0,Math.PI*2);
-  ctx.fillStyle="#000";
+  ctx.arc(player.x+player.w/2,player.y-30,player.w/2,0,Math.PI*2);
   ctx.fill();
-
-  // white crusty braids
+  // braids
   ctx.fillStyle="#eee";
   for(let i=0;i<6;i++){
-    ctx.fillRect(player.x-6+i*12,player.y-35+i*2,8,12);
+    ctx.fillRect(player.x-6+i*12,player.y-50+i*2,8,14);
   }
-
-  // arms (funny, weird)
+  // arms
   ctx.fillStyle="#000";
-  ctx.fillRect(player.x-10,player.y+20,10,player.h/2);
-  ctx.fillRect(player.x+player.w,player.y+20,10,player.h/2);
-
+  ctx.fillRect(player.x-12,player.y+20,12,player.h/2);
+  ctx.fillRect(player.x+player.w,player.y+20,12,player.h/2);
   // legs
-  ctx.fillRect(player.x+5,player.y+player.h,10,20);
-  ctx.fillRect(player.x+player.w-15,player.y+player.h,10,20);
+  ctx.fillRect(player.x+5,player.y+player.h,14,25);
+  ctx.fillRect(player.x+player.w-19,player.y+player.h,14,25);
+
+  // shield
+  if(player.shield>0){
+    ctx.strokeStyle="cyan";
+    ctx.lineWidth=3;
+    ctx.strokeRect(player.x-5,player.y-5,player.w+10,player.h+10);
+  }
 }
 
 /* ===== DRAW BULLET ===== */
 function drawBullet(b){
-  ctx.shadowColor="red"; ctx.shadowBlur=12;
-  ctx.fillStyle="#aaa"; ctx.fillRect(b.x,b.y,b.w,b.h);
-  ctx.fillStyle="#666"; ctx.fillRect(b.x+b.w-5,b.y,5,b.h);
+  ctx.shadowColor="red";
+  ctx.shadowBlur=10;
+  ctx.fillStyle="#aaa";
+  ctx.fillRect(b.x,b.y,b.w,b.h);
   ctx.shadowBlur=0;
 }
 
@@ -119,28 +139,40 @@ function drawBullet(b){
 function drawPowerup(p){
   p.wobble=Math.sin(frame/10+p.x)*2;
   if(p.type==="pancake"){
-    ctx.fillStyle="#ffcc66";
-    ctx.fillRect(p.x-8,p.y-4+p.wobble,16,8);
-    ctx.fillStyle="#996633";
-    ctx.fillRect(p.x-6,p.y-2+p.wobble,12,2); // syrup line
+    // 3-stack pancakes
+    for(let i=0;i<3;i++){
+      ctx.fillStyle="#ffcc66";
+      ctx.fillRect(p.x-15,p.y-6*(3-i)+i*4+p.wobble,30,6);
+      ctx.fillStyle="#996633";
+      ctx.fillRect(p.x-12,p.y-6*(3-i)+i*4+2+p.wobble,24,2); // syrup line
+    }
   } else {
+    // syrup bottle
     ctx.fillStyle="#663300";
-    ctx.fillRect(p.x-4,p.y-10+p.wobble,8,16);
-    ctx.fillStyle="#ffcc00"; ctx.fillRect(p.x-3,p.y-12+p.wobble,6,4); // cap
+    ctx.fillRect(p.x-5,p.y-15+p.wobble,10,20);
+    ctx.fillStyle="#ffcc00";
+    ctx.fillRect(p.x-3,p.y-18+p.wobble,6,5); // cap
   }
 }
 
-/* ===== LOOP ===== */
+/* ===== RESTART GAME ===== */
+function restartGame(){
+  player.x=300;player.y=300;player.hp=3;player.alive=true;player.shield=0;
+  bullets=[];powerups=[];frame=0;slowTime=0;speechShown=false;speechAlpha=0;difficulty=1;
+}
+
+/* ===== GAME LOOP ===== */
 function update(){
   ctx.clearRect(0,0,600,400);
   if(!player.alive){
-    ctx.fillStyle="red"; ctx.font="40px Arial";
+    ctx.fillStyle="red";
+    ctx.font="40px Arial";
     ctx.fillText("GAME OVER",150,200);
     return;
   }
 
   frame++;
-  difficulty = Math.min(10,1 + frame/400);
+  difficulty = Math.min(10,1+frame/400);
   if(slowTime>0) slowTime--;
 
   // move
@@ -148,8 +180,8 @@ function update(){
   if(keys["ArrowDown"]) player.y+=player.speed;
   if(keys["ArrowLeft"]) player.x-=player.speed;
   if(keys["ArrowRight"]) player.x+=player.speed;
-  player.x = Math.max(0,Math.min(550,player.x));
-  player.y = Math.max(0,Math.min(320,player.y));
+  player.x=Math.max(0,Math.min(540,player.x));
+  player.y=Math.max(0,Math.min(320,player.y));
 
   drawPlayer();
 
@@ -157,11 +189,14 @@ function update(){
   bullets.forEach((b,i)=>{
     b.x+=b.dx;b.y+=b.dy;
     drawBullet(b);
-    if(player.x<b.x+b.w && player.x+player.w>b.x &&
-       player.y<b.y+b.h && player.y+player.h>b.y){
+    if(collide(player,b)){
       bullets.splice(i,1);
-      player.hp--;
-      if(player.hp<=0){player.hp=0;player.alive=false;}
+      if(player.shield>0){
+        player.shield--;
+      } else {
+        player.hp--;
+        if(player.hp<=0) player.alive=false;
+      }
     }
   });
   bullets = bullets.filter(b=>b.x>-30 && b.x<630 && b.y>-30 && b.y<430);
@@ -169,35 +204,38 @@ function update(){
   // powerups
   powerups.forEach((p,i)=>{
     drawPowerup(p);
-    if(player.x<p.x+p.r && player.x+player.w>p.x-p.r &&
-       player.y<p.y+p.r && player.y+player.h>p.y-p.r){
+    if(collide(player,{x:p.x-15,y:p.y-15,w:30,h:30})){
+      if(p.type==="pancake"){
+        player.shield=Math.min(player.shield+1,3);
+      } else {
+        slowTime=240;
+      }
       powerups.splice(i,1);
       if(difficulty>=10 && !speechShown){
         speechShown=true;
         speechAlpha=1;
       }
-      if(p.type==="syrup") slowTime=240;
-      else player.hp=Math.min(3,player.hp+1);
     }
   });
 
-  // draw floating speech bubble if triggered
+  // speech bubble animation
   if(speechAlpha>0){
     ctx.globalAlpha = speechAlpha;
     ctx.fillStyle="white";
     ctx.font="16px Arial";
-    ctx.fillText("you still thinking about them pancakes",player.x-50,player.y-50+Math.sin(frame/10)*5);
-    ctx.globalAlpha = 1;
-    speechAlpha -= 0.002;
+    ctx.fillText("you still thinking about them pancakes",player.x-80,player.y-50+Math.sin(frame/10)*5);
+    ctx.globalAlpha=1;
+    speechAlpha-=0.002;
   }
 
   // HUD
   ctx.fillStyle="#00ff00";
   ctx.font="16px Arial";
   ctx.fillText("HP: "+player.hp,10,20);
-  ctx.fillText("DIFFICULTY: "+difficulty.toFixed(1),10,40);
+  ctx.fillText("SHIELD: "+player.shield,10,40);
+  ctx.fillText("DIFFICULTY: "+difficulty.toFixed(1),10,60);
 
-  // SPAWNS
+  // spawn bullets & powerups
   if(frame%20===0) spawnBullet();
   if(frame%300===0) spawnPowerup();
 
