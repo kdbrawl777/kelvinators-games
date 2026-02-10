@@ -2,41 +2,41 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Big K Bullet Dodger Ultimate</title>
+<title>Big K Bullet Dodger V7</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  body {
-    margin: 0;
-    background: black;
-    font-family: Arial, sans-serif;
-    text-align: center;
-    color: #00ff00;
-  }
-  canvas {
-    display: block;
-    margin: 20px auto;
-    border: 3px solid #00ff00;
-    background: #111;
-  }
-  button {
-    background: #111;
-    color: #00ff00;
-    border: 2px solid #00ff00;
-    font-size: 16px;
-    padding: 10px 20px;
-    cursor: pointer;
-    margin: 10px;
-  }
-  button:hover {
-    background: #222;
-  }
+body {
+  margin: 0;
+  background: black;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  color: #00ff00;
+}
+canvas {
+  display: block;
+  margin: 20px auto;
+  border: 3px solid #00ff00;
+  background: #111;
+}
+button {
+  background: #111;
+  color: #00ff00;
+  border: 2px solid #00ff00;
+  font-size: 16px;
+  padding: 10px 20px;
+  cursor: pointer;
+  margin: 10px;
+}
+button:hover {
+  background: #222;
+}
 </style>
 </head>
 <body>
 
 <h1>Big K Bullet Dodger</h1>
 <p>Arrow Keys • Dodge Bullets • Collect Pancakes & Syrup</p>
-<canvas id="game" width="600" height="400"></canvas>
+<canvas id="game" width="700" height="400"></canvas>
 <button onclick="restartGame()">Restart</button>
 
 <script>
@@ -48,17 +48,9 @@ let keys = {};
 document.addEventListener("keydown", e=>keys[e.key]=true);
 document.addEventListener("keyup", e=>keys[e.key]=false);
 
-/* ===== PLAYER ===== */
+/* ===== PLAYER (circle with combover) ===== */
 let player = {
-  x:300,
-  y:300,
-  w:60,
-  h:120,
-  speed:5,
-  hp:3,
-  alive:true,
-  shield:0,
-  wobble:0
+  x:100, y:200, r:20, speed:5, hp:3, alive:true
 };
 
 /* ===== GAME STATE ===== */
@@ -67,63 +59,54 @@ let powerups = [];
 let frame = 0;
 let difficulty = 1;
 let slowTime = 0;
-let speechShown = false;
-let speechAlpha = 0;
+
+/* ===== NPC CHARACTER ===== */
+let npc = {
+  x:580, y:150, w:100, h:200
+};
 
 /* ===== SPAWN BULLETS ===== */
 function spawnBullet(){
-  const side = Math.floor(Math.random()*4);
+  let side=Math.floor(Math.random()*4);
   let x,y,dx,dy;
   let speed = 5 + difficulty*0.8;
   if(slowTime>0) speed*=0.4;
-  if(side===0){x=Math.random()*600;y=-20;dx=0;dy=speed;}
-  if(side===1){x=Math.random()*600;y=420;dx=0;dy=-speed;}
+  if(side===0){x=Math.random()*700;y=-20;dx=0;dy=speed;}
+  if(side===1){x=Math.random()*700;y=420;dx=0;dy=-speed;}
   if(side===2){x=-20;y=Math.random()*400;dx=speed;dy=0;}
-  if(side===3){x=620;y=Math.random()*400;dx=-speed;dy=0;}
+  if(side===3){x=720;y=Math.random()*400;dx=-speed;dy=0;}
   bullets.push({x,y,dx,dy,w:20,h:12});
 }
 
 /* ===== SPAWN POWERUPS ===== */
 function spawnPowerup(){
   const type = Math.random()<0.5?"pancake":"syrup";
-  powerups.push({x:Math.random()*540+30,y:Math.random()*320+30,type,wobble:0});
+  powerups.push({x:Math.random()*600+30,y:Math.random()*320+30,type,wobble:0});
 }
 
 /* ===== COLLISION ===== */
-function collide(a,b){
-  return a.x < b.x + b.w && a.x + a.w > b.x &&
-         a.y < b.y + b.h && a.y + a.h > b.y;
+function collideCircleRect(c,r){
+  let distX = Math.abs(c.x - r.x-r.w/2);
+  let distY = Math.abs(c.y - r.y-r.h/2);
+  if(distX>r.w/2 + c.r) return false;
+  if(distY>r.h/2 + c.r) return false;
+  if(distX<=r.w/2) return true;
+  if(distY<=r.h/2) return true;
+  let dx=distX-r.w/2;
+  let dy=distY-r.h/2;
+  return dx*dx+dy*dy<=c.r*c.r;
 }
 
 /* ===== DRAW PLAYER ===== */
 function drawPlayer(){
-  player.wobble = Math.sin(frame/5)*5;
-  // torso
-  ctx.fillStyle="#000";
-  ctx.fillRect(player.x,player.y+player.wobble,player.w,player.h);
-  // head (oversized for fun)
+  // body
+  ctx.fillStyle="#00ffff";
   ctx.beginPath();
-  ctx.arc(player.x+player.w/2,player.y-30,player.w/2,0,Math.PI*2);
+  ctx.arc(player.x,player.y,player.r,0,Math.PI*2);
   ctx.fill();
-  // braids
-  ctx.fillStyle="#eee";
-  for(let i=0;i<6;i++){
-    ctx.fillRect(player.x-6+i*12,player.y-50+i*2,8,14);
-  }
-  // arms
-  ctx.fillStyle="#000";
-  ctx.fillRect(player.x-12,player.y+20,12,player.h/2);
-  ctx.fillRect(player.x+player.w,player.y+20,12,player.h/2);
-  // legs
-  ctx.fillRect(player.x+5,player.y+player.h,14,25);
-  ctx.fillRect(player.x+player.w-19,player.y+player.h,14,25);
-
-  // shield
-  if(player.shield>0){
-    ctx.strokeStyle="cyan";
-    ctx.lineWidth=3;
-    ctx.strokeRect(player.x-5,player.y-5,player.w+10,player.h+10);
-  }
+  // combover
+  ctx.fillStyle="#111";
+  ctx.fillRect(player.x-player.r,player.y-15,player.r*2,5);
 }
 
 /* ===== DRAW BULLET ===== */
@@ -139,7 +122,6 @@ function drawBullet(b){
 function drawPowerup(p){
   p.wobble=Math.sin(frame/10+p.x)*2;
   if(p.type==="pancake"){
-    // 3-stack pancakes
     for(let i=0;i<3;i++){
       ctx.fillStyle="#ffcc66";
       ctx.fillRect(p.x-15,p.y-6*(3-i)+i*4+p.wobble,30,6);
@@ -155,33 +137,48 @@ function drawPowerup(p){
   }
 }
 
-/* ===== RESTART GAME ===== */
+/* ===== DRAW NPC ===== */
+function drawNPC(){
+  // body
+  ctx.fillStyle="#8B5A2B"; // brown skin
+  ctx.fillRect(npc.x,npc.y,npc.w,npc.h);
+  // head
+  ctx.beginPath();
+  ctx.arc(npc.x+npc.w/2,npc.y-30,40,0,Math.PI*2);
+  ctx.fill();
+  // eyes
+  ctx.fillStyle="white";
+  ctx.fillRect(npc.x+npc.w/2-15,npc.y-40,10,10);
+  ctx.fillRect(npc.x+npc.w/2+5,npc.y-40,10,10);
+  ctx.fillStyle="black";
+  ctx.fillRect(npc.x+npc.w/2-12,npc.y-37,4,4);
+  ctx.fillRect(npc.x+npc.w/2+8,npc.y-37,4,4);
+  // mouth
+  ctx.fillStyle="red";
+  ctx.fillRect(npc.x+npc.w/2-15,npc.y-15,30,5);
+}
+
+/* ===== RESTART ===== */
 function restartGame(){
-  player.x=300;player.y=300;player.hp=3;player.alive=true;player.shield=0;
-  bullets=[];powerups=[];frame=0;slowTime=0;speechShown=false;speechAlpha=0;difficulty=1;
+  player.x=100;player.y=200;player.hp=3;player.alive=true;
+  bullets=[];powerups=[];frame=0;slowTime=0;difficulty=1;
 }
 
 /* ===== GAME LOOP ===== */
 function update(){
-  ctx.clearRect(0,0,600,400);
-  if(!player.alive){
-    ctx.fillStyle="red";
-    ctx.font="40px Arial";
-    ctx.fillText("GAME OVER",150,200);
-    return;
-  }
-
+  ctx.clearRect(0,0,700,400);
   frame++;
-  difficulty = Math.min(10,1+frame/400);
+  difficulty=Math.min(10,1+frame/400);
   if(slowTime>0) slowTime--;
 
-  // move
-  if(keys["ArrowUp"]) player.y-=player.speed;
-  if(keys["ArrowDown"]) player.y+=player.speed;
-  if(keys["ArrowLeft"]) player.x-=player.speed;
-  if(keys["ArrowRight"]) player.x+=player.speed;
-  player.x=Math.max(0,Math.min(540,player.x));
-  player.y=Math.max(0,Math.min(320,player.y));
+  if(player.alive){
+    if(keys["ArrowUp"]) player.y-=player.speed;
+    if(keys["ArrowDown"]) player.y+=player.speed;
+    if(keys["ArrowLeft"]) player.x-=player.speed;
+    if(keys["ArrowRight"]) player.x+=player.speed;
+    player.x=Math.max(player.r,Math.min(700-player.r,player.x));
+    player.y=Math.max(player.r,Math.min(400-player.r,player.y));
+  }
 
   drawPlayer();
 
@@ -189,55 +186,46 @@ function update(){
   bullets.forEach((b,i)=>{
     b.x+=b.dx;b.y+=b.dy;
     drawBullet(b);
-    if(collide(player,b)){
+    if(collideCircleRect(player,b)){
       bullets.splice(i,1);
-      if(player.shield>0){
-        player.shield--;
-      } else {
-        player.hp--;
-        if(player.hp<=0) player.alive=false;
-      }
+      player.hp--;
+      if(player.hp<=0) player.alive=false;
     }
   });
-  bullets = bullets.filter(b=>b.x>-30 && b.x<630 && b.y>-30 && b.y<430);
+  bullets = bullets.filter(b=>b.x>-30 && b.x<730 && b.y>-30 && b.y<430);
 
   // powerups
   powerups.forEach((p,i)=>{
     drawPowerup(p);
-    if(collide(player,{x:p.x-15,y:p.y-15,w:30,h:30})){
-      if(p.type==="pancake"){
-        player.shield=Math.min(player.shield+1,3);
-      } else {
-        slowTime=240;
-      }
+    if(collideCircleRect(player,{x:p.x-15,y:p.y-15,w:30,h:30})){
+      if(p.type==="pancake") player.hp=Math.min(player.hp+1,3);
+      else slowTime=240;
       powerups.splice(i,1);
-      if(difficulty>=10 && !speechShown){
-        speechShown=true;
-        speechAlpha=1;
-      }
     }
   });
 
-  // speech bubble animation
-  if(speechAlpha>0){
-    ctx.globalAlpha = speechAlpha;
-    ctx.fillStyle="white";
-    ctx.font="16px Arial";
-    ctx.fillText("you still thinking about them pancakes",player.x-80,player.y-50+Math.sin(frame/10)*5);
-    ctx.globalAlpha=1;
-    speechAlpha-=0.002;
-  }
+  // draw NPC speech
+  let bubbleY = npc.y-80 + Math.sin(frame/20)*5;
+  ctx.fillStyle="white";
+  ctx.font="14px Arial";
+  ctx.fillText("Gabbagool, mustard,",npc.x-180,bubbleY);
+  ctx.fillText("diddybluds & pancakes!",npc.x-180,bubbleY+18);
 
   // HUD
   ctx.fillStyle="#00ff00";
   ctx.font="16px Arial";
   ctx.fillText("HP: "+player.hp,10,20);
-  ctx.fillText("SHIELD: "+player.shield,10,40);
-  ctx.fillText("DIFFICULTY: "+difficulty.toFixed(1),10,60);
+  ctx.fillText("DIFFICULTY: "+difficulty.toFixed(1),10,40);
 
-  // spawn bullets & powerups
+  // spawn bullets and powerups
   if(frame%20===0) spawnBullet();
   if(frame%300===0) spawnPowerup();
+
+  if(!player.alive){
+    ctx.fillStyle="red";
+    ctx.font="40px Arial";
+    ctx.fillText("GAME OVER",250,200);
+  }
 
   requestAnimationFrame(update);
 }
