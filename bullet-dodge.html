@@ -49,14 +49,26 @@ document.addEventListener("keyup", e => keys[e.key]=false);
 /* ===== PLAYER ===== */
 let player = {
   x:100, y:225, r:20, speed:5,
-  hp:3, alive:true, shield:0
+  hp:3, alive:true, shield:0,
+  comboverOffset:0
 };
 
 /* ===== GAME STATE ===== */
 let bullets=[], powerups=[], frame=0, difficulty=1, slowTime=0;
 
 /* ===== NPC ===== */
-let npc = {x:650, y:200, w:120, h:220};
+let npc = {x:650, y:200, w:120, h:220, armAngle:0, armDir:1, mouthOffset:0};
+
+/* ===== NPC SPEECH ===== */
+let npcLines = [
+  "diddlyblud",
+  "gabbagool",
+  "mustard",
+  "to my office NOW",
+  "you still thinking about them pancakes?"
+];
+let currentLine = npcLines[0];
+let lineFrame = 0;
 
 /* ===== SPAWN BULLETS ===== */
 function spawnBullet(){
@@ -75,7 +87,7 @@ function spawnBullet(){
 function spawnPowerup(){
   let typeRand=Math.random();
   let type = typeRand<0.4?"pancake":typeRand<0.7?"syrup":"shield";
-  powerups.push({x:Math.random()*700+50,y:Math.random()*350+50,type,wobble:0});
+  powerups.push({x:Math.random()*700+50,y:Math.random()*350+50,type,wobble:0, sparkle:Math.random()*360});
 }
 
 /* ===== COLLISION ===== */
@@ -93,6 +105,11 @@ function collideCircleRect(c,r){
 
 /* ===== DRAW PLAYER ===== */
 function drawPlayer(){
+  // combover movement
+  if(keys["ArrowLeft"]) player.comboverOffset=-4;
+  else if(keys["ArrowRight"]) player.comboverOffset=4;
+  else player.comboverOffset=0;
+
   if(player.shield>0){
     ctx.strokeStyle="cyan";
     ctx.lineWidth=4;
@@ -106,7 +123,7 @@ function drawPlayer(){
   ctx.fill();
   // combover
   ctx.fillStyle="#111";
-  ctx.fillRect(player.x-player.r,player.y-15,player.r*2,5);
+  ctx.fillRect(player.x-player.r+player.comboverOffset,player.y-15,player.r*2,5);
 }
 
 /* ===== DRAW BULLET ===== */
@@ -120,19 +137,26 @@ function drawBullet(b){
 
 /* ===== DRAW POWERUPS ===== */
 function drawPowerup(p){
-  p.wobble=Math.sin(frame/10+p.x)*2;
+  p.wobble=Math.sin(frame/10+p.x)*4;
+  p.sparkle+=10;
+  let s=Math.sin(p.sparkle/10)*3;
   if(p.type==="pancake"){
     for(let i=0;i<3;i++){
       ctx.fillStyle="#ffcc66";
       ctx.fillRect(p.x-15,p.y-6*(3-i)+i*4+p.wobble,30,6);
       ctx.fillStyle="#996633";
       ctx.fillRect(p.x-12,p.y-6*(3-i)+i*4+2+p.wobble,24,2);
+      // little sparkle
+      ctx.fillStyle="#fff";
+      ctx.fillRect(p.x+Math.random()*20-10,p.y+Math.random()*6-3+p.wobble,1,1);
     }
   } else if(p.type==="syrup"){
     ctx.fillStyle="#663300";
     ctx.fillRect(p.x-5,p.y-15+p.wobble,10,20);
     ctx.fillStyle="#ffcc00";
     ctx.fillRect(p.x-3,p.y-18+p.wobble,6,5);
+    ctx.fillStyle="#fff";
+    ctx.fillRect(p.x+Math.sin(frame/5)*3,p.y+Math.cos(frame/5)*3+p.wobble,1,1);
   } else if(p.type==="shield"){
     ctx.fillStyle="#0ff";
     ctx.fillRect(p.x-10,p.y-10+p.wobble,20,20);
@@ -158,13 +182,37 @@ function drawNPC(){
   ctx.fillRect(npc.x+npc.w/2-12,npc.y-47,4,4);
   ctx.fillRect(npc.x+npc.w/2+8,npc.y-47,4,4);
   // mouth
+  npc.mouthOffset=Math.sin(frame/10)*5;
   ctx.fillStyle="red";
-  ctx.fillRect(npc.x+npc.w/2-15,npc.y-25,30,5);
+  ctx.fillRect(npc.x+npc.w/2-15,npc.y-25+npc.mouthOffset,30,5);
+  // arms flail
+  npc.armAngle+=0.05*npc.armDir;
+  if(npc.armAngle>0.5||npc.armAngle<-0.5) npc.armDir*=-1;
+  ctx.strokeStyle="#8B5A2B";
+  ctx.lineWidth=8;
+  // left arm
+  ctx.beginPath();
+  ctx.moveTo(npc.x+10,npc.y+50);
+  ctx.lineTo(npc.x+10+Math.sin(npc.armAngle)*40,npc.y+50+Math.cos(npc.armAngle)*40);
+  ctx.stroke();
+  // right arm holding pancakes
+  ctx.beginPath();
+  ctx.moveTo(npc.x+npc.w-10,npc.y+50);
+  ctx.lineTo(npc.x+npc.w-10+Math.sin(-npc.armAngle)*40,npc.y+50+Math.cos(-npc.armAngle)*40);
+  ctx.stroke();
+  // pancakes in right hand
+  ctx.fillStyle="#ffcc66";
+  for(let i=0;i<3;i++){
+    ctx.fillRect(npc.x+npc.w+20,npc.y+45-6*i,30,6);
+    ctx.fillStyle="#996633";
+    ctx.fillRect(npc.x+npc.w+23,npc.y+47-6*i,24,2);
+    ctx.fillStyle="#ffcc66";
+  }
 }
 
 /* ===== RESTART ===== */
 function restartGame(){
-  player.x=100;player.y=225;player.hp=3;player.alive=true;player.shield=0;
+  player.x=100;player.y=225;player.hp=3;player.alive=true;player.shield=0;player.comboverOffset=0;
   bullets=[];powerups=[];frame=0;slowTime=0;difficulty=1;
 }
 
@@ -212,11 +260,14 @@ function update(){
   });
 
   // NPC speech
+  lineFrame++;
+  if(lineFrame%240===0){ // every 4 seconds
+    currentLine = npcLines[Math.floor(Math.random()*npcLines.length)];
+  }
   let bubbleY=npc.y-90 + Math.sin(frame/20)*5;
   ctx.fillStyle="white";
   ctx.font="14px Arial";
-  ctx.fillText("Gabbagool, mustard,",npc.x-250,bubbleY);
-  ctx.fillText("diddybluds & pancakes!",npc.x-250,bubbleY+18);
+  ctx.fillText(currentLine,npc.x-250,bubbleY);
 
   drawNPC();
 
