@@ -1,26 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>2P Naruto Game</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-<h1>2 Player Naruto Game</h1>
-<p>W/S (Top) • ↑/↓ (Bottom)</p>
-
-<canvas id="game" width="900" height="300"></canvas>
-<p id="ui"></p>
-<button onclick="restart()">Restart</button>
-
-<!-- Naruto Music -->
-<audio id="narutoMusic" loop>
-  <source src="path_to_naruto_theme_song.mp3" type="audio/mp3"> <!-- Replace with the path to Naruto music -->
-  Your browser does not support the audio element.
-</audio>
-
 <script>
 /* ======================
    CANVAS SETUP
@@ -37,8 +14,8 @@ let spawnTimer;
 let speed;
 let gravity = 1;
 let score1, score2;
-let gameOver1, gameOver2;
 let enemies = [];
+let chakraOffset = 0;
 
 /* ======================
    PLAYER FACTORY
@@ -48,8 +25,8 @@ function makePlayer(yBase) {
     x: 60,
     y: yBase,
     baseY: yBase,
-    w: 40, // Adjusted width for Naruto character
-    h: 60, // Adjusted height for Naruto character
+    w: 26,
+    h: 36,
     vy: 0,
     duck: false,
     alive: true
@@ -58,31 +35,69 @@ function makePlayer(yBase) {
 
 let p1, p2;
 
-// Load Naruto Image for Character
-const narutoImage = new Image();
-narutoImage.src = 'path_to_naruto_image.png'; // Replace with the path to Naruto image
-
-// Load Shuriken Image for Obstacles
-const shurikenImage = new Image();
-shurikenImage.src = 'path_to_shuriken_image.png'; // Replace with the path to Shuriken image
-
 /* ======================
-   DRAW NARUTO CHARACTER
+   PLAYER DRAW
    ====================== */
-function drawNaruto(p) {
-  ctx.drawImage(narutoImage, p.x, p.y, p.w, p.h);
+function drawRunner(p, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(p.x, p.y, p.w, p.h);
 }
 
 /* ======================
-   ENEMIES (Shurikens)
+   NARUTO BACKGROUND
+   ====================== */
+function drawNarutoBackground() {
+  // Sky gradient
+  const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  g.addColorStop(0, "#ffae42");
+  g.addColorStop(1, "#ff6f00");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Chakra streaks
+  chakraOffset -= speed * 0.5;
+  for (let i = 0; i < 10; i++) {
+    ctx.fillStyle = "rgba(0,255,255,0.15)";
+    ctx.fillRect((i * 200 + chakraOffset) % canvas.width, 0, 80, canvas.height);
+  }
+
+  // Hidden Leaf swirl symbols
+  ctx.strokeStyle = "rgba(0,0,0,0.2)";
+  for (let x = 100; x < canvas.width; x += 250) {
+    for (let y = 60; y < canvas.height; y += 120) {
+      ctx.beginPath();
+      ctx.arc(x, y, 18, 0, Math.PI * 1.5);
+      ctx.stroke();
+    }
+  }
+
+  // Chakra divider
+  ctx.strokeStyle = "#00ffff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 150);
+  ctx.lineTo(canvas.width, 150);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+}
+
+/* ======================
+   ENEMIES (SHURIKEN)
    ====================== */
 function spawnEnemy() {
+  const lane = Math.random() < 0.5 ? 0 : 1;
+
+  // Prevent impossible stacking
+  if (enemies.some(e => e.lane === lane && e.x > canvas.width - 300)) return;
+
+  const flying = Math.random() < 0.5;
+
   enemies.push({
     x: canvas.width,
-    lane: Math.random() < 0.5 ? 0 : 1,
-    w: 30,
-    h: 30,
-    img: shurikenImage
+    lane,
+    flying,
+    w: 24,
+    h: flying ? 18 : 28
   });
 }
 
@@ -92,7 +107,6 @@ function spawnEnemy() {
 document.addEventListener("keydown", e => {
   if (e.key === "w") jump(p1);
   if (e.key === "s") duck(p1, true);
-
   if (e.key === "ArrowUp") jump(p2);
   if (e.key === "ArrowDown") duck(p2, true);
 });
@@ -108,26 +122,20 @@ function jump(p) {
 
 function duck(p, on) {
   p.duck = on;
-  p.h = on ? 40 : 60;  // Adjusted height for ducking
-  p.y = on ? p.baseY + 20 : p.baseY;
+  p.h = on ? 20 : 36;
+  p.y = on ? p.baseY + 16 : p.baseY;
 }
 
 /* ======================
-   LOOP
+   GAME LOOP
    ====================== */
 function update() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // divider
-  ctx.strokeStyle = "#00ff00";
-  ctx.beginPath();
-  ctx.moveTo(0, 150);
-  ctx.lineTo(canvas.width, 150);
-  ctx.stroke();
+  drawNarutoBackground();
 
   [p1, p2].forEach(p => {
     if (!p.alive) return;
-
     p.vy += gravity;
     p.y += p.vy;
     if (p.y > p.baseY) {
@@ -136,26 +144,32 @@ function update() {
     }
   });
 
-  drawNaruto(p1);
-  drawNaruto(p2);
+  drawRunner(p1, "#0033ff");
+  drawRunner(p2, "#00aa00");
 
   enemies.forEach((e, i) => {
     e.x -= speed;
-    const laneY = e.lane === 0 ? 114 : 264;
-    
-    ctx.drawImage(e.img, e.x, laneY - 20, e.w, e.h);
 
-    [[p1, 0], [p2, 1]].forEach(([p, l]) => {
+    const laneY = e.lane === 0 ? 114 : 264;
+    const y = e.flying ? laneY - 40 : laneY;
+
+    // Shuriken look
+    ctx.fillStyle = "#111";
+    ctx.beginPath();
+    ctx.arc(e.x, y + 10, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    [[p1,0],[p2,1]].forEach(([p,l]) => {
       if (!p.alive || e.lane !== l) return;
       if (
         p.x < e.x + e.w &&
         p.x + p.w > e.x &&
-        p.y < laneY + e.h &&
-        p.y + p.h > laneY
+        p.y < y + e.h &&
+        p.y + p.h > y
       ) p.alive = false;
     });
 
-    if (e.x < -30) enemies.splice(i, 1);
+    if (e.x < -40) enemies.splice(i,1);
   });
 
   if (p1.alive) score1++;
@@ -170,7 +184,7 @@ function update() {
 }
 
 /* ======================
-   RESTART (NO BUGS)
+   RESTART
    ====================== */
 function restart() {
   cancelAnimationFrame(animationId);
@@ -183,19 +197,9 @@ function restart() {
   p1 = makePlayer(114);
   p2 = makePlayer(264);
 
-  spawnTimer = setInterval(spawnEnemy, 1200);
+  spawnTimer = setInterval(spawnEnemy, 1100);
   update();
-
-  // Start Naruto music
-  let music = document.getElementById('narutoMusic');
-  music.play();
 }
 
-/* ======================
-   START
-   ====================== */
 restart();
 </script>
-
-</body>
-</html>
