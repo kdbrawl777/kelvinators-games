@@ -1,68 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shinigami Strikers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1>Shinigami Strikers</h1>
+<p>W/S (Top) • ↑/↓ (Bottom)</p>
+
+<canvas id="game" width="900" height="300"></canvas>
+<p id="ui"></p>
+<button onclick="restart()">Restart</button>
+
 <script>
+/* ===== CANVAS ===== */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-let speed = 5;
-let gravity = 1;
-let enemies = [];
-let score1 = 0, score2 = 0;
-let runFrame = 0;
+/* ===== GAME STATE ===== */
+let speed, gravity = 1;
+let enemies, score1, score2;
+let animationId;
 
-/* ======================
-   PLAYER
-   ====================== */
+/* ===== PLAYER ===== */
 function makePlayer(y) {
   return {
-    x: 70,
-    y,
+    x: 60,
+    y: y,
     baseY: y,
-    w: 22,
+    w: 26,
     h: 36,
     vy: 0,
-    duck: false,
     alive: true
   };
 }
 
-let p1 = makePlayer(114);
-let p2 = makePlayer(264);
+let p1, p2;
 
-/* ======================
-   INPUT (FIXED)
-   ====================== */
+/* ===== INPUT ===== */
 document.addEventListener("keydown", e => {
-  if (e.key === "w") jump(p1);
-  if (e.key === "ArrowUp") jump(p2);
-  if (e.key === "s") duck(p1, true);
-  if (e.key === "ArrowDown") duck(p2, true);
+  if (e.key === "w" && p1.y === p1.baseY) p1.vy = -15;
+  if (e.key === "ArrowUp" && p2.y === p2.baseY) p2.vy = -15;
 });
 
-document.addEventListener("keyup", e => {
-  if (e.key === "s") duck(p1, false);
-  if (e.key === "ArrowDown") duck(p2, false);
-});
-
-function jump(p) {
-  if (!p.alive) return;
-  if (p.y === p.baseY) {
-    p.vy = -15;
-  }
+/* ===== ENEMIES ===== */
+function spawnEnemy() {
+  enemies.push({
+    x: canvas.width,
+    lane: Math.random() < 0.5 ? 0 : 1,
+    flying: Math.random() < 0.4,
+    w: 20,
+    h: 30
+  });
 }
 
-function duck(p, on) {
-  p.duck = on;
-  p.h = on ? 20 : 36;
-  p.y = on ? p.baseY + 16 : p.baseY;
-}
+/* ===== LOOP ===== */
+function update() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-/* ======================
-   BACKGROUND
-   ====================== */
-function drawBackground() {
-  const g = ctx.createLinearGradient(0,0,0,canvas.height);
-  g.addColorStop(0,"#ffb347");
-  g.addColorStop(1,"#ff5f1f");
-  ctx.fillStyle = g;
+  /* background */
+  ctx.fillStyle = "#ff914d";
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
   ctx.strokeStyle = "#00ffff";
@@ -70,148 +70,69 @@ function drawBackground() {
   ctx.moveTo(0,150);
   ctx.lineTo(canvas.width,150);
   ctx.stroke();
-}
 
-/* ======================
-   NARUTO RUN
-   ====================== */
-function drawNarutoRun(p, color) {
-  runFrame++;
-  ctx.save();
-  ctx.translate(p.x + 10, p.y + 18);
-  ctx.rotate(-0.25);
-
-  ctx.fillStyle = color;
-
-  // body
-  ctx.fillRect(-6,-12,12,22);
-
-  // head
-  ctx.fillRect(-5,-22,10,8);
-
-  // arms back
-  ctx.fillRect(-18,-8,12,4);
-  ctx.fillRect(6,-8,12,4);
-
-  // legs
-  ctx.fillRect(-4,10 + Math.sin(runFrame*0.3)*4,4,12);
-  ctx.fillRect(0,10 + Math.cos(runFrame*0.3)*4,4,12);
-
-  ctx.restore();
-}
-
-/* ======================
-   ENEMIES (FIXED)
-   ====================== */
-function spawnEnemy() {
-  const lane = Math.random() < 0.5 ? 0 : 1;
-
-  if (enemies.some(e => e.lane === lane && e.x > canvas.width - 300)) return;
-
-  enemies.push({
-    x: canvas.width,
-    lane,
-    type: Math.random() < 0.5 ? "kunai" : "shuriken",
-    rot: 0
-  });
-}
-
-/* ======================
-   DRAW SHURIKEN (DUCK)
-   ====================== */
-function drawShuriken(e, y) {
-  ctx.save();
-  ctx.translate(e.x, y);
-  ctx.rotate(e.rot);
-  ctx.fillStyle = "#222";
-
-  for (let i=0;i<4;i++){
-    ctx.rotate(Math.PI/2);
-    ctx.beginPath();
-    ctx.moveTo(0,0);
-    ctx.lineTo(18,4);
-    ctx.lineTo(18,-4);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-/* ======================
-   DRAW KUNAI (JUMP)
-   ====================== */
-function drawKunai(e, y) {
-  ctx.fillStyle = "#333";
-  ctx.beginPath();
-  ctx.moveTo(e.x,y);
-  ctx.lineTo(e.x+28,y+6);
-  ctx.lineTo(e.x,y+12);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillRect(e.x-6,y+4,6,4);
-}
-
-/* ======================
-   GAME LOOP
-   ====================== */
-function update() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawBackground();
-
-  [p1,p2].forEach((p,i)=>{
-    if(!p.alive) return;
+  /* players */
+  [p1,p2].forEach(p => {
+    if (!p.alive) return;
 
     p.vy += gravity;
     p.y += p.vy;
-    if(p.y > p.baseY){
+
+    if (p.y > p.baseY) {
       p.y = p.baseY;
       p.vy = 0;
     }
 
-    drawNarutoRun(p, i===0 ? "#003cff" : "#00aa44");
+    ctx.fillStyle = "#111";
+    ctx.fillRect(p.x, p.y, p.w, p.h);
   });
 
-  enemies.forEach((e,i)=>{
+  /* enemies */
+  enemies.forEach((e,i) => {
     e.x -= speed;
-    e.rot += 0.25;
+    const laneY = e.lane === 0 ? 114 : 264;
+    const y = e.flying ? laneY - 40 : laneY;
 
-    const laneBase = e.lane === 0 ? 114 : 264;
-
-    let y, h;
-    if(e.type === "shuriken"){
-      y = laneBase - 50; // ALWAYS duck
-      h = 20;
-      drawShuriken(e,y);
-    } else {
-      y = laneBase; // ALWAYS jump
-      h = 18;
-      drawKunai(e,y);
-    }
+    ctx.fillStyle = e.flying ? "yellow" : "red";
+    ctx.fillRect(e.x, y, e.w, e.h);
 
     [[p1,0],[p2,1]].forEach(([p,l])=>{
-      if(!p.alive || e.lane !== l) return;
+      if (e.lane !== l) return;
       if (
-        p.x < e.x + 28 &&
+        p.x < e.x + e.w &&
         p.x + p.w > e.x &&
-        p.y < y + h &&
+        p.y < y + e.h &&
         p.y + p.h > y
       ) p.alive = false;
     });
 
-    if(e.x < -50) enemies.splice(i,1);
+    if (e.x < -40) enemies.splice(i,1);
   });
 
-  if(p1.alive) score1++;
-  if(p2.alive) score2++;
-
-  speed += 0.002;
+  if (p1.alive) score1++;
+  if (p2.alive) score2++;
 
   document.getElementById("ui").textContent =
     `P1: ${score1} ${p1.alive?"":"💀"} | P2: ${score2} ${p2.alive?"":"💀"}`;
 
-  requestAnimationFrame(update);
+  animationId = requestAnimationFrame(update);
 }
 
-setInterval(spawnEnemy, 1100);
-update();
+/* ===== RESTART ===== */
+function restart() {
+  cancelAnimationFrame(animationId);
+  speed = 5;
+  score1 = score2 = 0;
+  enemies = [];
+  p1 = makePlayer(114);
+  p2 = makePlayer(264);
+  update();
+}
+
+/* ===== START ===== */
+setInterval(spawnEnemy, 1200);
+restart();
 </script>
+
+</body>
+</html>
