@@ -1,38 +1,132 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dino Game</title>
-    <style>
-        body { margin: 0; overflow: hidden; background-color: #f7f7f7; }
-        #gameCanvas { background: #fff; display: block; margin: 0 auto; }
-    </style>
-</head>
-<body>
-    <canvas id="gameCanvas" width="800" height="200"></canvas>
-    <script>
-        var canvas = document.getElementById("gameCanvas");
-        var ctx = canvas.getContext("2d");
-        var dinoX = 50, dinoY = 150, dinoWidth = 20, dinoHeight = 20;
+// Sample of the Dino Game code for better functionality
 
-        function drawDino() {
-            ctx.fillStyle = "green";
-            ctx.fillRect(dinoX, dinoY, dinoWidth, dinoHeight);
-        }
+// Variables for the game
+let score = 0;
+let isDuck = false;
+let isJumping = false;
+let gravity = 1;
+let jumpSpeed = 20;
 
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawDino();
-            requestAnimationFrame(gameLoop);
-        }
+// Dino object
+const dino = document.createElement('div');
+dino.className = 'dino';
+document.body.appendChild(dino);
 
-        gameLoop();
-        
-        document.addEventListener('keydown', function(event) {
-            if (event.code === 'Space') {
-                dinoY -= 60; 
-                setTimeout(() => { dinoY += 60; }, 500);
-            }
-        });
-    </script>
-</body>
-</html>
+// Ground object
+const ground = document.createElement('div');
+ground.className = 'ground';
+document.body.appendChild(ground);
+
+// Function to start the jumping effect
+function jump() {
+  if (!isJumping) {
+    isJumping = true;
+    let jumpHeight = jumpSpeed;
+
+    // Jumping animation
+    const jumpInterval = setInterval(() => {
+      if (jumpHeight > 0) {
+        dino.style.bottom = `${parseInt(dino.style.bottom || 0) + 5}px`;
+        jumpHeight--;
+      } else {
+        clearInterval(jumpInterval);
+        fall();
+      }
+    }, 20);
+  }
+}
+
+// Falling effect when the dino finishes jumping
+function fall() {
+  const fallInterval = setInterval(() => {
+    if (parseInt(dino.style.bottom || 0) > 0) {
+      dino.style.bottom = `${parseInt(dino.style.bottom || 0) - gravity}px`;
+    } else {
+      clearInterval(fallInterval);
+      isJumping = false;
+    }
+  }, 20);
+}
+
+// Dino ducking effect
+function duck() {
+  if (!isDuck) {
+    isDuck = true;
+    dino.classList.add('duck');
+    setTimeout(() => {
+      isDuck = false;
+      dino.classList.remove('duck');
+    }, 800); // Duck for 800ms
+  }
+}
+
+// Score Tracking
+function updateScore() {
+  score++;
+  document.querySelector('#score').innerText = score;
+}
+
+// Obstacle generation and handling
+function createObstacle() {
+  const obstacle = document.createElement('div');
+  obstacle.className = 'obstacle';
+  document.body.appendChild(obstacle);
+  let position = window.innerWidth;
+
+  const obstacleInterval = setInterval(() => {
+    position -= 5;
+    obstacle.style.left = `${position}px`;
+
+    // Check for collision with the dino
+    if (position <= parseInt(dino.style.left || 0) + 50 &&
+        parseInt(dino.style.bottom || 0) <= 50) {
+      clearInterval(obstacleInterval);
+      gameOver();
+    }
+
+    // Remove obstacle when it's off-screen
+    if (position < 0) {
+      clearInterval(obstacleInterval);
+      obstacle.remove();
+    }
+  }, 20);
+}
+
+// Game over function
+function gameOver() {
+  alert("Game Over!");
+  // Reset the game or reload page
+  score = 0;
+  document.querySelector('#score').innerText = score;
+}
+
+// Game loop and speed increase
+function gameLoop() {
+  if (score % 100 === 0) { // Increase speed or difficulty every 100 points
+    createObstacle();
+    setTimeout(() => {
+      gameLoop();
+    }, 1000 - score / 10); // Faster obstacles as score increases
+  } else {
+    createObstacle();
+    setTimeout(gameLoop, 2000); // Regular interval
+  }
+}
+
+// Event Listeners for user controls
+document.addEventListener('keydown', (event) => {
+  if (event.code === 'Space') {
+    jump();
+  } else if (event.code === 'ArrowDown') {
+    duck();
+  }
+});
+
+// Displaying the score on the screen
+const scoreDisplay = document.createElement('div');
+scoreDisplay.id = 'score';
+scoreDisplay.innerText = score;
+document.body.appendChild(scoreDisplay);
+
+// Start the game
+gameLoop();
