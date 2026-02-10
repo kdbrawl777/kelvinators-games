@@ -23,7 +23,7 @@
 <body>
 
 <h1>Big K Bullet Dodger</h1>
-<p>Arrow Keys • Dodge or Die • Eat Pancakes!</p>
+<p>Arrow Keys • Dodge Bullets • Eat Pancakes</p>
 
 <canvas id="game" width="600" height="400"></canvas>
 
@@ -44,7 +44,8 @@ let player = {
   speed: 5,
   hp: 3,
   hitFlash: 0,
-  shield: false
+  shield: false,
+  alive: true
 };
 
 /* ===== GAME STATE ===== */
@@ -54,7 +55,7 @@ let frame = 0;
 let difficulty = 1;
 let slowTime = 0;
 
-/* ===== SPAWN BULLETS ===== */
+/* ===== BULLETS ===== */
 function spawnBullet() {
   const side = Math.floor(Math.random() * 4);
   let x, y, dx, dy;
@@ -70,7 +71,7 @@ function spawnBullet() {
   bullets.push({x, y, dx, dy, w: 24, h: 8});
 }
 
-/* ===== SPAWN POWERUPS (PANCAKES) ===== */
+/* ===== POWERUPS (PIXEL PANCAKES) ===== */
 function spawnPowerup() {
   powerups.push({
     x: Math.random() * 540 + 30,
@@ -97,10 +98,10 @@ function drawPlayer() {
   ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
   ctx.fill();
 
-  // PIXELATED COMBOVER
+  // IMPROVED PIXEL COMBOVER
   ctx.fillStyle = "#003300";
-  for(let i=0;i<5;i++){
-    ctx.fillRect(player.x-8 + i*4, player.y-12+i, 4,2);
+  for(let i=0;i<6;i++){
+    ctx.fillRect(player.x-9 + i*4, player.y-13+i, 4,2);
   }
 
   // shield
@@ -113,8 +114,27 @@ function drawPlayer() {
   }
 }
 
+/* ===== DRAW POWERUPS (PIXEL PANCAKES WITH SYRUP) ===== */
+function drawPowerup(p){
+  // pancake (tan square)
+  ctx.fillStyle="#ffcc66";
+  ctx.fillRect(p.x-p.r,p.y-p.r,p.r*2,p.r*2);
+  // syrup lines (dark brown pixels)
+  ctx.fillStyle="#996633";
+  for(let i=0;i<3;i++){
+    ctx.fillRect(p.x-6,p.y-4+i*2,12,1);
+  }
+}
+
 /* ===== LOOP ===== */
 function update(){
+  if(!player.alive){
+    ctx.fillStyle="red";
+    ctx.font="40px Arial";
+    ctx.fillText("GAME OVER",150,200);
+    return;
+  }
+
   ctx.clearRect(0,0,600,400);
   frame++;
   difficulty = 1 + frame/400;
@@ -137,9 +157,10 @@ function update(){
   bullets.forEach((b,i)=>{
     b.x+=b.dx; b.y+=b.dy;
 
-    // bullet casing
+    // red glow
     ctx.shadowColor="red";
     ctx.shadowBlur=12;
+    // bullet casing
     ctx.fillStyle="#aaa";
     ctx.fillRect(b.x,b.y,b.w,b.h);
     ctx.fillStyle="#666";
@@ -149,24 +170,18 @@ function update(){
     if(rectCircle(b.x,b.y,b.w,b.h,player.x,player.y,player.r)){
       bullets.splice(i,1);
       if(player.shield){player.shield=false;}
-      else{player.hp--;player.hitFlash=15;}
+      else{
+        player.hp--;
+        player.hitFlash=15;
+        if(player.hp<=0){player.hp=0; player.alive=false;}
+      }
     }
   });
   bullets=bullets.filter(b=>b.x>-80 && b.x<680 && b.y>-80 && b.y<480);
 
-  // powerups (PANCAKES)
+  // powerups
   powerups.forEach((p,i)=>{
-    // pancake: yellow circle with syrup line
-    ctx.fillStyle="#ffcc66";
-    ctx.beginPath();
-    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    ctx.fill();
-    ctx.strokeStyle="#996633";
-    ctx.lineWidth=3;
-    ctx.beginPath();
-    ctx.moveTo(p.x-6,p.y); ctx.lineTo(p.x+6,p.y);
-    ctx.stroke();
-
+    drawPowerup(p);
     let dx=player.x-p.x; let dy=player.y-p.y;
     if(Math.sqrt(dx*dx+dy*dy)<player.r+p.r){
       if(p.type==="shield") player.shield=true;
