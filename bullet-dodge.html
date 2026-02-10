@@ -23,61 +23,158 @@
 <body>
 
 <h1>Dodge the Bullets</h1>
-<p>Use Arrow Keys</p>
+<p>Arrow Keys • Dodge • Grab Power-Ups</p>
 
 <canvas id="game" width="600" height="400"></canvas>
 
 <script>
+/* ===== CANVAS ===== */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-let player = { x: 300, y: 200, r: 10 };
+/* ===== PLAYER ===== */
+let player = {
+  x: 300,
+  y: 200,
+  r: 12,
+  speed: 4,
+  hp: 3,
+  hitTimer: 0,
+  shield: false
+};
+
+/* ===== GAME STATE ===== */
 let bullets = [];
+let powers = [];
 let keys = {};
 let frame = 0;
+let slowTime = 0;
 
+/* ===== INPUT ===== */
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup", e => keys[e.key] = false);
 
+/* ===== BULLETS ===== */
 function spawnBullet() {
+  const side = Math.floor(Math.random() * 4);
+  let x, y, dx, dy;
+
+  const speed = slowTime > 0 ? 1.5 : 3.5;
+
+  if (side === 0) { x = Math.random()*600; y = -20; dx = 0; dy = speed; }
+  if (side === 1) { x = Math.random()*600; y = 420; dx = 0; dy = -speed; }
+  if (side === 2) { x = -20; y = Math.random()*400; dx = speed; dy = 0; }
+  if (side === 3) { x = 620; y = Math.random()*400; dx = -speed; dy = 0; }
+
   bullets.push({
-    x: Math.random() < 0.5 ? 0 : 600,
-    y: Math.random() * 400,
-    dx: Math.random() < 0.5 ? 3 : -3,
-    dy: (Math.random() - 0.5) * 2,
-    r: 5
+    x, y, dx, dy,
+    w: 16,
+    h: 6
   });
 }
 
+/* ===== POWER UPS ===== */
+function spawnPower() {
+  powers.push({
+    x: Math.random() * 560 + 20,
+    y: Math.random() * 360 + 20,
+    type: Math.random() < 0.5 ? "shield" : "slow",
+    r: 10
+  });
+}
+
+/* ===== COLLISION ===== */
+function rectHitCircle(rx, ry, rw, rh, cx, cy, cr) {
+  const testX = Math.max(rx, Math.min(cx, rx + rw));
+  const testY = Math.max(ry, Math.min(cy, ry + rh));
+  const dx = cx - testX;
+  const dy = cy - testY;
+  return dx*dx + dy*dy < cr*cr;
+}
+
+/* ===== LOOP ===== */
 function update() {
   ctx.clearRect(0,0,600,400);
 
-  if (keys["ArrowUp"]) player.y -= 4;
-  if (keys["ArrowDown"]) player.y += 4;
-  if (keys["ArrowLeft"]) player.x -= 4;
-  if (keys["ArrowRight"]) player.x += 4;
+  /* PLAYER MOVE */
+  if (keys["ArrowUp"]) player.y -= player.speed;
+  if (keys["ArrowDown"]) player.y += player.speed;
+  if (keys["ArrowLeft"]) player.x -= player.speed;
+  if (keys["ArrowRight"]) player.x += player.speed;
 
-  player.x = Math.max(10, Math.min(590, player.x));
-  player.y = Math.max(10, Math.min(390, player.y));
+  player.x = Math.max(12, Math.min(588, player.x));
+  player.y = Math.max(12, Math.min(388, player.y));
 
-  ctx.fillStyle = "#00ff00";
+  /* PLAYER COLOR */
+  if (player.hitTimer > 0) player.hitTimer--;
+
+  ctx.fillStyle = player.hitTimer > 0 ? "red" : "#00ff00";
   ctx.beginPath();
-  ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+  ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
   ctx.fill();
 
-  bullets.forEach(b => {
+  /* SHIELD VISUAL */
+  if (player.shield) {
+    ctx.strokeStyle = "#00ffff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.r + 5, 0, Math.PI*2);
+    ctx.stroke();
+  }
+
+  /* BULLETS */
+  bullets.forEach((b, i) => {
     b.x += b.dx;
     b.y += b.dy;
 
-    ctx.fillStyle = "red";
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = "#ff4444";
+    ctx.shadowColor = "red";
+    ctx.shadowBlur = 8;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.shadowBlur = 0;
+
+    if (rectHitCircle(b.x, b.y, b.w, b.h, player.x, player.y, player.r)) {
+      bullets.splice(i,1);
+      if (player.shield) {
+        player.shield = false;
+      } else {
+        player.hp--;
+        player.hitTimer = 15;
+      }
+    }
   });
 
-  bullets = bullets.filter(b => b.x > -20 && b.x < 620);
+  bullets = bullets.filter(b =>
+    b.x > -50 && b.x < 650 && b.y > -50 && b.y < 450
+  );
 
-  if (frame % 30 === 0) spawnBullet();
+  /* POWERS */
+  powers.forEach((p, i) => {
+    ctx.fillStyle = p.type === "shield" ? "#00ffff" : "#ffff00";
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fill();
+
+    const dx = player.x - p.x;
+    const dy = player.y - p.y;
+    if (Math.sqrt(dx*dx + dy*dy) < player.r + p.r) {
+      if (p.type === "shield") player.shield = true;
+      if (p.type === "slow") slowTime = 300;
+      powers.splice(i,1);
+    }
+  });
+
+  if (slowTime > 0) slowTime--;
+
+  /* HUD */
+  ctx.fillStyle = "#00ff00";
+  ctx.font = "16px Arial";
+  ctx.fillText("HP: " + player.hp, 10, 20);
+  if (slowTime > 0) ctx.fillText("SLOW TIME", 500, 20);
+
+  /* SPAWNS */
+  if (frame % 35 === 0) spawnBullet();
+  if (frame % 600 === 0) spawnPower();
 
   frame++;
   requestAnimationFrame(update);
