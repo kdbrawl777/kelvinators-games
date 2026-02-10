@@ -1,102 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dino Game</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <h1>Dino Game</h1>
+<h1>Dino Game</h1>
 
-  <div id="game">
-    <div id="score">0</div>
-    <div class="dino"></div>
-  </div>
+<div id="gameWrapper">
+  <canvas id="game" width="800" height="200"></canvas>
+</div>
 
-  <p>Space = Jump | ↓ = Duck</p>
+<div id="ui">
+  <p id="score">Score: 0 | High Score: 0</p>
+  <button onclick="restart()">Restart</button>
+  <p>Tap / Space = Jump • Swipe Down / ↓ = Duck</p>
+</div>
 
-  <script>
-    let score = 0;
-    let isJumping = false;
-    let isDuck = false;
+<script>
+/* ======================
+   SETUP
+   ====================== */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-    const dino = document.querySelector(".dino");
-    const scoreDisplay = document.getElementById("score");
-    const game = document.getElementById("game");
+let speed = 5;
+let gravity = 1;
+let score = 0;
+let highScore = localStorage.getItem("dinoHigh") || 0;
+let gameOver = false;
 
-    function jump() {
-      if (isJumping) return;
-      isJumping = true;
+/* ======================
+   DINO (PIXEL STYLE)
+   ====================== */
+const dino = {
+  x: 50,
+  y: 140,
+  w: 30,
+  h: 40,
+  vy: 0,
+  ducking: false
+};
 
-      let position = 0;
-      const up = setInterval(() => {
-        if (position >= 100) {
-          clearInterval(up);
-          const down = setInterval(() => {
-            if (position <= 0) {
-              clearInterval(down);
-              isJumping = false;
-            }
-            position -= 5;
-            dino.style.bottom = position + "px";
-          }, 20);
-        }
-        position += 5;
-        dino.style.bottom = position + "px";
-      }, 20);
+/* ======================
+   ENEMIES
+   ====================== */
+let enemies = [];
+
+function spawnEnemy() {
+  const flying = Math.random() < 0.3;
+  enemies.push({
+    x: canvas.width,
+    y: flying ? 90 : 140,
+    w: 20,
+    h: flying ? 20 : 40,
+    flying
+  });
+}
+
+/* ======================
+   CONTROLS
+   ====================== */
+function jump() {
+  if (dino.y >= 140) dino.vy = -15;
+}
+
+function duck(down) {
+  dino.ducking = down;
+  dino.h = down ? 20 : 40;
+  dino.y = down ? 160 : 140;
+}
+
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") jump();
+  if (e.code === "ArrowDown") duck(true);
+});
+
+document.addEventListener("keyup", e => {
+  if (e.code === "ArrowDown") duck(false);
+});
+
+/* MOBILE */
+canvas.addEventListener("touchstart", jump);
+canvas.addEventListener("touchend", () => duck(false));
+
+/* ======================
+   GAME LOOP
+   ====================== */
+function update() {
+  if (gameOver) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Dino physics
+  dino.vy += gravity;
+  dino.y += dino.vy;
+  if (dino.y > 140) {
+    dino.y = dino.ducking ? 160 : 140;
+    dino.vy = 0;
+  }
+
+  // Draw dino (pixel)
+  ctx.fillStyle = "#00ff00";
+  ctx.fillRect(dino.x, dino.y, dino.w, dino.h);
+
+  // Enemies
+  enemies.forEach((e, i) => {
+    e.x -= speed;
+    ctx.fillStyle = e.flying ? "yellow" : "red";
+    ctx.fillRect(e.x, e.y, e.w, e.h);
+
+    // Collision
+    if (
+      dino.x < e.x + e.w &&
+      dino.x + dino.w > e.x &&
+      dino.y < e.y + e.h &&
+      dino.y + dino.h > e.y
+    ) {
+      endGame();
     }
 
-    function duck() {
-      if (isDuck) return;
-      isDuck = true;
-      dino.classList.add("duck");
-      setTimeout(() => {
-        dino.classList.remove("duck");
-        isDuck = false;
-      }, 500);
-    }
+    if (e.x + e.w < 0) enemies.splice(i, 1);
+  });
 
-    function createObstacle() {
-      const obstacle = document.createElement("div");
-      obstacle.classList.add("obstacle");
-      game.appendChild(obstacle);
+  // Score & difficulty
+  score++;
+  speed += 0.0005;
 
-      let pos = game.offsetWidth;
-      obstacle.style.left = pos + "px";
+  document.getElementById("score").textContent =
+    `Score: ${score} | High Score: ${highScore}`;
 
-      const move = setInterval(() => {
-        pos -= 5;
-        obstacle.style.left = pos + "px";
+  requestAnimationFrame(update);
+}
 
-        const dinoRect = dino.getBoundingClientRect();
-        const obsRect = obstacle.getBoundingClientRect();
+function endGame() {
+  gameOver = true;
+  highScore = Math.max(score, highScore);
+  localStorage.setItem("dinoHigh", highScore);
+}
 
-        if (
-          obsRect.left < dinoRect.right &&
-          obsRect.right > dinoRect.left &&
-          obsRect.bottom > dinoRect.top
-        ) {
-          alert("Game Over! Score: " + score);
-          location.reload();
-        }
+/* ======================
+   RESTART
+   ====================== */
+function restart() {
+  score = 0;
+  speed = 5;
+  enemies = [];
+  gameOver = false;
+  update();
+}
 
-        if (pos < -20) {
-          obstacle.remove();
-          clearInterval(move);
-          score++;
-          scoreDisplay.textContent = score;
-        }
-      }, 20);
-    }
-
-    setInterval(createObstacle, 2000);
-
-    document.addEventListener("keydown", (e) => {
-      if (e.code === "Space") jump();
-      if (e.code === "ArrowDown") duck();
-    });
-  </script>
+/* ======================
+   START
+   ====================== */
+setInterval(spawnEnemy, 1500);
+update();
+</script>
 
 </body>
 </html>
