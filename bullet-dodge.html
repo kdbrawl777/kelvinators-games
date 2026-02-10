@@ -23,12 +23,11 @@
 <body>
 
 <h1>Big K Bullet Dodger</h1>
-<p>Arrow Keys • Dodge or Die</p>
+<p>Arrow Keys • Dodge or Die • Eat Pancakes!</p>
 
 <canvas id="game" width="600" height="400"></canvas>
 
 <script>
-/* ===== CANVAS ===== */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
@@ -42,7 +41,7 @@ let player = {
   x: 300,
   y: 200,
   r: 14,
-  speed: 4.8,
+  speed: 5,
   hp: 3,
   hitFlash: 0,
   shield: false
@@ -55,12 +54,12 @@ let frame = 0;
 let difficulty = 1;
 let slowTime = 0;
 
-/* ===== BULLETS (REAL LOOKING) ===== */
+/* ===== SPAWN BULLETS ===== */
 function spawnBullet() {
   const side = Math.floor(Math.random() * 4);
   let x, y, dx, dy;
 
-  let speed = 4 + difficulty * 0.6;
+  let speed = 5 + difficulty * 0.7;
   if (slowTime > 0) speed *= 0.4;
 
   if (side === 0) { x = Math.random()*600; y = -30; dx = 0; dy = speed; }
@@ -68,15 +67,10 @@ function spawnBullet() {
   if (side === 2) { x = -30; y = Math.random()*400; dx = speed; dy = 0; }
   if (side === 3) { x = 630; y = Math.random()*400; dx = -speed; dy = 0; }
 
-  bullets.push({
-    x, y,
-    dx, dy,
-    w: 28,
-    h: 8
-  });
+  bullets.push({x, y, dx, dy, w: 24, h: 8});
 }
 
-/* ===== POWERUPS ===== */
+/* ===== SPAWN POWERUPS (PANCAKES) ===== */
 function spawnPowerup() {
   powerups.push({
     x: Math.random() * 540 + 30,
@@ -95,7 +89,7 @@ function rectCircle(rx, ry, rw, rh, cx, cy, cr) {
   return dx*dx + dy*dy < cr*cr;
 }
 
-/* ===== DRAW PLAYER ===== */
+/* ===== DRAW PLAYER WITH COMBOVER ===== */
 function drawPlayer() {
   // body
   ctx.fillStyle = player.hitFlash > 0 ? "red" : "#00ff00";
@@ -103,106 +97,94 @@ function drawPlayer() {
   ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
   ctx.fill();
 
-  // COMBOVER (locked in 🔒)
+  // PIXELATED COMBOVER
   ctx.fillStyle = "#003300";
-  ctx.beginPath();
-  ctx.moveTo(player.x - 8, player.y - 12);
-  ctx.lineTo(player.x + 12, player.y - 16);
-  ctx.lineTo(player.x + 6, player.y - 4);
-  ctx.closePath();
-  ctx.fill();
+  for(let i=0;i<5;i++){
+    ctx.fillRect(player.x-8 + i*4, player.y-12+i, 4,2);
+  }
 
   // shield
-  if (player.shield) {
-    ctx.strokeStyle = "#00ffff";
-    ctx.lineWidth = 2;
+  if(player.shield){
+    ctx.strokeStyle="#00ffff";
+    ctx.lineWidth=2;
     ctx.beginPath();
-    ctx.arc(player.x, player.y, player.r + 6, 0, Math.PI*2);
+    ctx.arc(player.x,player.y,player.r+6,0,Math.PI*2);
     ctx.stroke();
   }
 }
 
 /* ===== LOOP ===== */
-function update() {
+function update(){
   ctx.clearRect(0,0,600,400);
-
   frame++;
-  difficulty = 1 + frame / 500;
+  difficulty = 1 + frame/400;
 
-  if (slowTime > 0) slowTime--;
-  if (player.hitFlash > 0) player.hitFlash--;
+  if(slowTime>0) slowTime--;
+  if(player.hitFlash>0) player.hitFlash--;
 
-  /* MOVE */
-  if (keys["ArrowUp"]) player.y -= player.speed;
-  if (keys["ArrowDown"]) player.y += player.speed;
-  if (keys["ArrowLeft"]) player.x -= player.speed;
-  if (keys["ArrowRight"]) player.x += player.speed;
+  // move
+  if(keys["ArrowUp"]) player.y -= player.speed;
+  if(keys["ArrowDown"]) player.y += player.speed;
+  if(keys["ArrowLeft"]) player.x -= player.speed;
+  if(keys["ArrowRight"]) player.x += player.speed;
 
   player.x = Math.max(14, Math.min(586, player.x));
   player.y = Math.max(14, Math.min(386, player.y));
 
   drawPlayer();
 
-  /* BULLETS */
-  bullets.forEach((b, i) => {
-    b.x += b.dx;
-    b.y += b.dy;
-
-    // red glow
-    ctx.shadowColor = "red";
-    ctx.shadowBlur = 12;
+  // bullets
+  bullets.forEach((b,i)=>{
+    b.x+=b.dx; b.y+=b.dy;
 
     // bullet casing
-    ctx.fillStyle = "#888";
-    ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.shadowColor="red";
+    ctx.shadowBlur=12;
+    ctx.fillStyle="#aaa";
+    ctx.fillRect(b.x,b.y,b.w,b.h);
+    ctx.fillStyle="#666";
+    ctx.fillRect(b.x+b.w-6,b.y,6,b.h);
+    ctx.shadowBlur=0;
 
-    // bullet tip
-    ctx.fillStyle = "#555";
-    ctx.fillRect(b.x + b.w - 6, b.y, 6, b.h);
-
-    ctx.shadowBlur = 0;
-
-    if (rectCircle(b.x, b.y, b.w, b.h, player.x, player.y, player.r)) {
+    if(rectCircle(b.x,b.y,b.w,b.h,player.x,player.y,player.r)){
       bullets.splice(i,1);
-      if (player.shield) {
-        player.shield = false;
-      } else {
-        player.hp--;
-        player.hitFlash = 15;
-      }
+      if(player.shield){player.shield=false;}
+      else{player.hp--;player.hitFlash=15;}
     }
   });
+  bullets=bullets.filter(b=>b.x>-80 && b.x<680 && b.y>-80 && b.y<480);
 
-  bullets = bullets.filter(b =>
-    b.x > -80 && b.x < 680 && b.y > -80 && b.y < 480
-  );
-
-  /* POWERUPS */
-  powerups.forEach((p, i) => {
-    ctx.fillStyle = p.type === "shield" ? "#00ffff" : "#ffff00";
+  // powerups (PANCAKES)
+  powerups.forEach((p,i)=>{
+    // pancake: yellow circle with syrup line
+    ctx.fillStyle="#ffcc66";
     ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
     ctx.fill();
+    ctx.strokeStyle="#996633";
+    ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.moveTo(p.x-6,p.y); ctx.lineTo(p.x+6,p.y);
+    ctx.stroke();
 
-    let dx = player.x - p.x;
-    let dy = player.y - p.y;
-    if (Math.sqrt(dx*dx + dy*dy) < player.r + p.r) {
-      if (p.type === "shield") player.shield = true;
-      if (p.type === "slow") slowTime = 240;
+    let dx=player.x-p.x; let dy=player.y-p.y;
+    if(Math.sqrt(dx*dx+dy*dy)<player.r+p.r){
+      if(p.type==="shield") player.shield=true;
+      if(p.type==="slow") slowTime=240;
       powerups.splice(i,1);
     }
   });
 
-  /* HUD */
-  ctx.fillStyle = "#00ff00";
-  ctx.font = "16px Arial";
-  ctx.fillText("HP: " + player.hp, 10, 20);
-  ctx.fillText("DIFFICULTY: " + difficulty.toFixed(1), 10, 40);
-  if (slowTime > 0) ctx.fillText("SLOW TIME", 470, 20);
+  // HUD
+  ctx.fillStyle="#00ff00";
+  ctx.font="16px Arial";
+  ctx.fillText("HP: "+player.hp,10,20);
+  ctx.fillText("DIFFICULTY: "+difficulty.toFixed(1),10,40);
+  if(slowTime>0) ctx.fillText("SLOW TIME",470,20);
 
-  /* SPAWNS */
-  if (frame % 22 === 0) spawnBullet();
-  if (frame % 240 === 0) spawnPowerup();
+  // SPAWNS
+  if(frame%20===0) spawnBullet();
+  if(frame%300===0) spawnPowerup();
 
   requestAnimationFrame(update);
 }
