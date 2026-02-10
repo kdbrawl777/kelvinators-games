@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Big K Bullet Dodger V7</title>
+<title>Big K Bullet Dodger - Circle Player</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {
@@ -27,9 +27,7 @@ button {
   cursor: pointer;
   margin: 10px;
 }
-button:hover {
-  background: #222;
-}
+button:hover { background: #222; }
 </style>
 </head>
 <body>
@@ -49,25 +47,17 @@ document.addEventListener("keydown", e=>keys[e.key]=true);
 document.addEventListener("keyup", e=>keys[e.key]=false);
 
 /* ===== PLAYER (circle with combover) ===== */
-let player = {
-  x:100, y:200, r:20, speed:5, hp:3, alive:true
-};
+let player = {x:100, y:200, r:20, speed:5, hp:3, alive:true};
 
 /* ===== GAME STATE ===== */
-let bullets = [];
-let powerups = [];
-let frame = 0;
-let difficulty = 1;
-let slowTime = 0;
+let bullets=[], powerups=[], frame=0, difficulty=1, slowTime=0;
 
 /* ===== NPC CHARACTER ===== */
-let npc = {
-  x:580, y:150, w:100, h:200
-};
+let npc = {x:580, y:150, w:100, h:200};
 
 /* ===== SPAWN BULLETS ===== */
 function spawnBullet(){
-  let side=Math.floor(Math.random()*4);
+  let side = Math.floor(Math.random()*4);
   let x,y,dx,dy;
   let speed = 5 + difficulty*0.8;
   if(slowTime>0) speed*=0.4;
@@ -99,7 +89,6 @@ function collideCircleRect(c,r){
 
 /* ===== DRAW PLAYER ===== */
 function drawPlayer(){
-  // body
   ctx.fillStyle="#00ffff";
   ctx.beginPath();
   ctx.arc(player.x,player.y,player.r,0,Math.PI*2);
@@ -126,23 +115,20 @@ function drawPowerup(p){
       ctx.fillStyle="#ffcc66";
       ctx.fillRect(p.x-15,p.y-6*(3-i)+i*4+p.wobble,30,6);
       ctx.fillStyle="#996633";
-      ctx.fillRect(p.x-12,p.y-6*(3-i)+i*4+2+p.wobble,24,2); // syrup line
+      ctx.fillRect(p.x-12,p.y-6*(3-i)+i*4+2+p.wobble,24,2);
     }
   } else {
-    // syrup bottle
     ctx.fillStyle="#663300";
     ctx.fillRect(p.x-5,p.y-15+p.wobble,10,20);
     ctx.fillStyle="#ffcc00";
-    ctx.fillRect(p.x-3,p.y-18+p.wobble,6,5); // cap
+    ctx.fillRect(p.x-3,p.y-18+p.wobble,6,5);
   }
 }
 
 /* ===== DRAW NPC ===== */
 function drawNPC(){
-  // body
-  ctx.fillStyle="#8B5A2B"; // brown skin
+  ctx.fillStyle="#8B5A2B";
   ctx.fillRect(npc.x,npc.y,npc.w,npc.h);
-  // head
   ctx.beginPath();
   ctx.arc(npc.x+npc.w/2,npc.y-30,40,0,Math.PI*2);
   ctx.fill();
@@ -204,7 +190,7 @@ function update(){
     }
   });
 
-  // draw NPC speech
+  // NPC speech
   let bubbleY = npc.y-80 + Math.sin(frame/20)*5;
   ctx.fillStyle="white";
   ctx.font="14px Arial";
@@ -217,7 +203,6 @@ function update(){
   ctx.fillText("HP: "+player.hp,10,20);
   ctx.fillText("DIFFICULTY: "+difficulty.toFixed(1),10,40);
 
-  // spawn bullets and powerups
   if(frame%20===0) spawnBullet();
   if(frame%300===0) spawnPowerup();
 
