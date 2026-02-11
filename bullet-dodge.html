@@ -36,6 +36,13 @@ button:hover { background: #222; }
   background-size: cover;
   z-index: 1000;
 }
+#sidebar {
+  position: absolute;
+  top: 20px;
+  left: 10px;
+  font-size: 18px;
+  color: #00ff00;
+}
 </style>
 </head>
 <body>
@@ -46,6 +53,13 @@ button:hover { background: #222; }
 <button onclick="restartGame()">Restart</button>
 <button id="pancakeButton">🍁 Refill Syrup 🍁</button>
 <button id="pauseButton">Pause</button>
+
+<div id="sidebar">
+  <div id="hp">HP: 3</div>
+  <div id="shield">Shield: 0</div>
+  <div id="slowTime">Slow Time: 0</div>
+  <div id="difficulty">Difficulty: 1.0</div>
+</div>
 
 <script>
 const canvas = document.getElementById("game");
@@ -195,18 +209,19 @@ function startSyrupRain() {
 }
 
 function createSyrupBottle() {
-  const syrupBottle = document.createElement('div');
-  syrupBottle.classList.add('syrup-bottle');
-  syrupBottle.style.left = `${Math.random() * 800}px`;  // Random horizontal position
-  syrupBottle.style.top = '0px';  // Start at the top
+  const syrupBottle = document.createElement("div");
+  syrupBottle.classList.add("syrup-bottle");
+  syrupBottle.style.left = `${Math.random() * 800}px`;  // Random x position
 
   document.body.appendChild(syrupBottle);
 
-  let fallingInterval = setInterval(() => {
-    let currentTop = parseFloat(syrupBottle.style.top);
-    if (currentTop < window.innerHeight) {
-      syrupBottle.style.top = `${currentTop + 5}px`;
-    } else {
+  let currentTop = 0;
+
+  const fallingInterval = setInterval(() => {
+    currentTop += 5;
+    syrupBottle.style.top = `${currentTop}px`;
+
+    if (currentTop > canvas.height) {
       clearInterval(fallingInterval);
       syrupBottle.remove();
     }
@@ -228,6 +243,7 @@ function restartGame() {
   player.x = 100; player.y = 225; player.hp = 3; player.alive = true; player.shield = 0; player.comboverOffset = 0;
   bullets = []; powerups = []; frame = 0; slowTime = 0; difficulty = 1;
   isPaused = false;
+  currentLine = npcLines[0];  // Reset NPC speech
   startGameLoop();  // Restart game loop
 }
 
