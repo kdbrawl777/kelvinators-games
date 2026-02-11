@@ -257,8 +257,8 @@ function update(){
     drawPowerup(p);
     if(collideCircleRect(player,{x:p.x-15,y:p.y-15,w:30,h:30})){
       if(p.type==="pancake") player.hp=Math.min(player.hp+1,3);
-      else if(p.type==="syrup") slowTime=300;
-      else if(p.type==="shield") player.shield=180;
+      else if(p.type==="syrup") slowTime=670;
+      else if(p.type==="shield") player.shield=267;
       powerups.splice(i,1);
     }
   });
