@@ -66,6 +66,7 @@ let player = {
 /* ===== GAME STATE ===== */
 let bullets=[], powerups=[], frame=0, difficulty=1, slowTime=0;
 let isPaused = false;  // Game pause flag
+let gameLoopId; // To store the requestAnimationFrame ID
 
 /* ===== NPC ===== */
 let npc = {x:650, y:200, w:120, h:220, armAngle:0, armDir:1, mouthOffset:0};
@@ -225,7 +226,7 @@ function restartGame(){
 function togglePause() {
   isPaused = !isPaused;
   if (isPaused) {
-    cancelAnimationFrame(update); // Stop the game loop
+    cancelAnimationFrame(gameLoopId); // Stop the game loop
   } else {
     update(); // Restart the game loop
   }
@@ -306,7 +307,7 @@ function update(){
     ctx.fillText("GAME OVER",300,225);
   }
 
-  requestAnimationFrame(update);
+  gameLoopId = requestAnimationFrame(update); // Store the loop ID
 }
 
 update();
