@@ -198,7 +198,8 @@ function createSyrupBottle() {
   const syrupBottle = document.createElement('div');
   syrupBottle.classList.add('syrup-bottle');
   syrupBottle.style.left = `${Math.random() * 800}px`;  // Random horizontal position
-  
+  syrupBottle.style.top = '0px';  // Start at the top
+
   document.body.appendChild(syrupBottle);
 
   let fallingInterval = setInterval(() => {
@@ -212,14 +213,6 @@ function createSyrupBottle() {
   }, 50);
 }
 
-/* ===== RESTART GAME ===== */
-function restartGame() {
-  player.x=100; player.y=225; player.hp=3; player.alive=true; player.shield=0; player.comboverOffset=0;
-  bullets=[]; powerups=[]; frame=0; slowTime=0; difficulty=1;
-  isPaused = false;
-  startGameLoop();
-}
-
 /* ===== PAUSE GAME ===== */
 function pauseGame() {
   isPaused = !isPaused;
@@ -230,8 +223,13 @@ function pauseGame() {
   }
 }
 
-document.getElementById('pauseButton').addEventListener('click', pauseGame);
-document.getElementById('pancakeButton').addEventListener('click', startSyrupRain);
+/* ===== RESTART GAME ===== */
+function restartGame() {
+  player.x = 100; player.y = 225; player.hp = 3; player.alive = true; player.shield = 0; player.comboverOffset = 0;
+  bullets = []; powerups = []; frame = 0; slowTime = 0; difficulty = 1;
+  isPaused = false;
+  startGameLoop();  // Restart game loop
+}
 
 /* ===== GAME LOOP ===== */
 function startGameLoop() {
@@ -307,6 +305,10 @@ function update() {
 }
 
 startGameLoop();
+
+document.getElementById('pauseButton').addEventListener('click', pauseGame);
+document.getElementById('pancakeButton').addEventListener('click', startSyrupRain);
+
 </script>
 
 </body>
