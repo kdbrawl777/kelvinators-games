@@ -28,6 +28,14 @@ button {
   margin: 10px;
 }
 button:hover { background: #222; }
+.syrup-bottle {
+  position: absolute;
+  width: 30px;  /* Adjust based on your bottle size */
+  height: 60px; /* Adjust based on your bottle size */
+  background-color: brown; /* This could be an image of a syrup bottle */
+  border-radius: 5px;
+  z-index: 1000;
+}
 </style>
 </head>
 <body>
@@ -36,6 +44,7 @@ button:hover { background: #222; }
 <p>Arrow Keys • Dodge Bullets • Collect Pancakes, Syrup, and Shield</p>
 <canvas id="game" width="800" height="450"></canvas>
 <button onclick="restartGame()">Restart</button>
+<button id="pancakeButton">🍁 Refill Syrup 🍁</button>
 
 <script>
 const canvas = document.getElementById("game");
@@ -65,7 +74,7 @@ let npcLines = [
   "gabbagool",
   "meet me in the hallway",
   "Oh no my hair fell out nooooo",
-  "No shady shikis allowed",
+  "No people named kelvin allowed",
   "stop being freinds with them",
   "Why are you the big k",
   "to my office NOW",
@@ -220,6 +229,31 @@ function restartGame(){
   bullets=[];powerups=[];frame=0;slowTime=0;difficulty=1;
 }
 
+/* ===== SYRUP BOTTLE RAIN ===== */
+function startSyrupRain() {
+  setInterval(createSyrupBottle, 200); // Drop a bottle every 200ms
+}
+
+function createSyrupBottle() {
+  const syrupBottle = document.createElement('div');
+  syrupBottle.classList.add('syrup-bottle');
+  syrupBottle.style.left = `${Math.random() * window.innerWidth}px`; 
+  syrupBottle.style.top = `-60px`;  // Start above the screen
+
+  document.body.appendChild(syrupBottle);
+
+  let fallSpeed = Math.random() * 3 + 2; // Random fall speed between 2-5 seconds
+  let fallingInterval = setInterval(() => {
+    let currentTop = parseFloat(syrupBottle.style.top);
+    if (currentTop < window.innerHeight) {
+      syrupBottle.style.top = currentTop + 2 + 'px'; // Adjust for fall speed
+    } else {
+      clearInterval(fallingInterval); // Remove the bottle when it falls off the screen
+      syrupBottle.remove();
+    }
+  }, 20); // Update every 20ms for smooth animation
+}
+
 /* ===== GAME LOOP ===== */
 function update(){
   ctx.clearRect(0,0,800,450);
@@ -297,6 +331,10 @@ function update(){
 }
 
 update();
+
+// Event listener for the pancake button
+document.getElementById('pancakeButton').addEventListener('click', startSyrupRain);
 </script>
+
 </body>
 </html>
