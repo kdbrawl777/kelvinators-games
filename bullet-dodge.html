@@ -66,6 +66,7 @@ let player = {
 /* ===== GAME STATE ===== */
 let bullets=[], powerups=[], frame=0, difficulty=1, slowTime=0;
 let isPaused = false;  // Game pause flag
+let syrupRainInterval;  // To store the syrup rain interval
 let gameLoopId; // To store the requestAnimationFrame ID
 
 /* ===== NPC ===== */
@@ -185,137 +186,127 @@ function drawPowerup(p){
 /* ===== SYRUP BOTTLE RAIN ===== */
 function startSyrupRain() {
   currentLine = npcLines[9]; // NPC says "NOOOOO MY SYRUPPPP"
-  let syrupRainDuration = 5000; // 5 seconds
-  let syrupRainInterval = setInterval(createSyrupBottle, 200); // Create bottle every 200ms
+  syrupRainInterval = setInterval(createSyrupBottle, 200);  // Create syrup every 200ms
   
   // Stop the syrup rain after 5 seconds
   setTimeout(() => {
     clearInterval(syrupRainInterval);
-  }, syrupRainDuration);
+  }, 5000);
 }
 
 function createSyrupBottle() {
   const syrupBottle = document.createElement('div');
   syrupBottle.classList.add('syrup-bottle');
-  syrupBottle.style.left = `${Math.random() * window.innerWidth}px`; 
-  syrupBottle.style.top = `-60px`;  // Start above the screen
-
+  syrupBottle.style.left = `${Math.random() * 800}px`;  // Random horizontal position
+  
   document.body.appendChild(syrupBottle);
 
-  let fallSpeed = Math.random() * 3 + 2; // Random fall speed between 2-5 seconds
   let fallingInterval = setInterval(() => {
     let currentTop = parseFloat(syrupBottle.style.top);
     if (currentTop < window.innerHeight) {
-      syrupBottle.style.top = currentTop + 2 + 'px'; // Adjust for fall speed
+      syrupBottle.style.top = `${currentTop + 5}px`;
     } else {
-      clearInterval(fallingInterval); // Remove the bottle when it falls off the screen
+      clearInterval(fallingInterval);
       syrupBottle.remove();
     }
-  }, 20); // Update every 20ms for smooth animation
+  }, 50);
 }
 
-/* ===== RESTART ===== */
-function restartGame(){
-  player.x=100;player.y=225;player.hp=3;player.alive=true;player.shield=0;player.comboverOffset=0;
-  bullets=[];powerups=[];frame=0;slowTime=0;difficulty=1;
+/* ===== RESTART GAME ===== */
+function restartGame() {
+  player.x=100; player.y=225; player.hp=3; player.alive=true; player.shield=0; player.comboverOffset=0;
+  bullets=[]; powerups=[]; frame=0; slowTime=0; difficulty=1;
   isPaused = false;
-  update(); // Resume the game loop if it's paused
+  startGameLoop();
 }
 
 /* ===== PAUSE GAME ===== */
-function togglePause() {
+function pauseGame() {
   isPaused = !isPaused;
   if (isPaused) {
-    cancelAnimationFrame(gameLoopId); // Stop the game loop
+    cancelAnimationFrame(gameLoopId);  // Pause the game
   } else {
-    update(); // Restart the game loop
+    startGameLoop();  // Resume the game
   }
 }
 
-/* ===== GAME LOOP ===== */
-function update(){
-  if (isPaused) return; // If paused, stop updating
-  
-  ctx.clearRect(0,0,800,450);
-  frame++;
-  difficulty=Math.min(10,1+frame/400);
-  if(slowTime>0) slowTime--;
+document.getElementById('pauseButton').addEventListener('click', pauseGame);
+document.getElementById('pancakeButton').addEventListener('click', startSyrupRain);
 
-  // move player
-  if(player.alive){
-    if(keys["ArrowUp"]) player.y-=player.speed;
-    if(keys["ArrowDown"]) player.y+=player.speed;
-    if(keys["ArrowLeft"]) player.x-=player.speed;
-    if(keys["ArrowRight"]) player.x+=player.speed;
-    player.x=Math.max(player.r,Math.min(800-player.r,player.x));
-    player.y=Math.max(player.r,Math.min(450-player.r,player.y));
-    if(player.shield>0) player.shield--;
+/* ===== GAME LOOP ===== */
+function startGameLoop() {
+  gameLoopId = requestAnimationFrame(update);
+}
+
+function update() {
+  if (isPaused) return;  // Skip frame updates if paused
+  
+  ctx.clearRect(0, 0, 800, 450);
+  frame++;
+  difficulty = Math.min(10, 1 + frame / 400);
+  if (slowTime > 0) slowTime--;
+
+  // Player Movement
+  if (player.alive) {
+    if (keys["ArrowUp"]) player.y -= player.speed;
+    if (keys["ArrowDown"]) player.y += player.speed;
+    if (keys["ArrowLeft"]) player.x -= player.speed;
+    if (keys["ArrowRight"]) player.x += player.speed;
+    player.x = Math.max(player.r, Math.min(800 - player.r, player.x));
+    player.y = Math.max(player.r, Math.min(450 - player.r, player.y));
+    if (player.shield > 0) player.shield--;
   }
 
   drawPlayer();
 
-  // bullets
-  bullets.forEach((b,i)=>{
-    b.x+=b.dx; b.y+=b.dy;
+  // Bullets
+  bullets.forEach((b, i) => {
+    b.x += b.dx; b.y += b.dy;
     drawBullet(b);
-    if(player.alive && collideCircleRect(player,b)){
-      if(player.shield<=0) player.hp--;
-      bullets.splice(i,1);
-      if(player.hp<=0) player.alive=false;
+    if (player.alive && collideCircleRect(player, b)) {
+      if (player.shield <= 0) player.hp--;
+      bullets.splice(i, 1);
+      if (player.hp <= 0) player.alive = false;
     }
   });
-  bullets = bullets.filter(b=>b.x>-30 && b.x<830 && b.y>-30 && b.y<480);
 
-  // powerups
-  powerups.forEach((p,i)=>{
+  bullets = bullets.filter(b => b.x > -30 && b.x < 830 && b.y > -30 && b.y < 480);
+
+  // Powerups
+  powerups.forEach((p, i) => {
     drawPowerup(p);
-    if(collideCircleRect(player,{x:p.x-15,y:p.y-15,w:30,h:30})){
-      if(p.type==="pancake") player.hp=Math.min(player.hp+1,3);
-      else if(p.type==="syrup") slowTime=670;
-      else if(p.type==="shield") player.shield=267;
-      powerups.splice(i,1);
+    if (collideCircleRect(player, { x: p.x - 15, y: p.y - 15, w: 30, h: 30 })) {
+      if (p.type === "pancake") player.hp = Math.min(player.hp + 1, 3);
+      else if (p.type === "syrup") slowTime = 670;
+      else if (p.type === "shield") player.shield = 267;
+      powerups.splice(i, 1);
     }
   });
 
-  // NPC speech
+  // NPC Speech
   lineFrame++;
-  if(lineFrame%240===0){ // every 4 seconds
-    currentLine = npcLines[Math.floor(Math.random()*npcLines.length)];
+  if (lineFrame % 240 === 0) {
+    currentLine = npcLines[Math.floor(Math.random() * npcLines.length)];
   }
-  let bubbleY=npc.y-90 + Math.sin(frame/20)*5;
-  ctx.fillStyle="white";
-  ctx.font="14px Arial";
-  ctx.fillText(currentLine,npc.x-250,bubbleY);
+  let bubbleY = npc.y - 90 + Math.sin(frame / 20) * 5;
+  ctx.fillStyle = "white";
+  ctx.font = "14px Arial";
+  ctx.fillText(currentLine, npc.x - 250, bubbleY);
 
-  drawNPC();
+  // Spawn Bullets & Powerups
+  if (frame % 20 === 0) spawnBullet();
+  if (frame % 300 === 0) spawnPowerup();
 
-  // HUD
-  ctx.fillStyle="#00ff00";
-  ctx.font="16px Arial";
-  ctx.fillText("HP: "+player.hp,10,20);
-  ctx.fillText("DIFFICULTY: "+difficulty.toFixed(1),10,40);
-  ctx.fillText("SLOW TIME: "+slowTime,10,60);
-  ctx.fillText("SHIELD: "+player.shield,10,80);
-
-  // spawn bullets and powerups
-  if(frame%20===0) spawnBullet();
-  if(frame%300===0) spawnPowerup();
-
-  if(!player.alive){
-    ctx.fillStyle="red";
-    ctx.font="40px Arial";
-    ctx.fillText("GAME OVER",300,225);
+  if (!player.alive) {
+    ctx.fillStyle = "red";
+    ctx.font = "40px Arial";
+    ctx.fillText("GAME OVER", 300, 225);
   }
 
-  gameLoopId = requestAnimationFrame(update); // Store the loop ID
+  startGameLoop();
 }
 
-update();
-
-// Event listeners for the buttons
-document.getElementById('pancakeButton').addEventListener('click', startSyrupRain);
-document.getElementById('pauseButton').addEventListener('click', togglePause);
-
+startGameLoop();
 </script>
 
 </body>
